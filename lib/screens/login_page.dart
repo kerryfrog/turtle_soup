@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'register_page.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -10,8 +11,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController(text: 'kerryfrog@naver.com');
+  final TextEditingController _passwordController = TextEditingController(
+    text: '000000',
+  );
 
    void _login() async {
     final email = _emailController.text.trim();
@@ -22,30 +25,32 @@ class _LoginPageState extends State<LoginPage> {
         password: password,
       );
       print('로그인 성공!');
+      Navigator.pushReplacementNamed(context, '/home');
+    } on FirebaseAuthException catch (e) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('로그인 실패'),
+          content: Text(e.message ?? '알 수 없는 오류가 발생했습니다.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
     } catch (e) {
       print('로그인 실패: $e');
     }
   }
 
 
-  void _signup() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-    try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      print('회원가입 성공!');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('회원가입 성공! 로그인 해보세요')));
-    } catch (e) {
-      print('회원가입 실패: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('회원가입 실패: $e')));
-    }
+  void _register() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const RegisterPage()),
+    );
   }
 
   @override
@@ -69,7 +74,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(onPressed: _login, child: const Text('로그인')),
-            TextButton(onPressed: _signup, child: const Text('회원가입')),
+            TextButton(onPressed: _register, child: const Text('회원가입')),
           ],
         ),
       ),

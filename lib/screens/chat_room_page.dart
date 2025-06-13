@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ChatRoomPage extends StatefulWidget {
   final String roomId;
@@ -13,20 +14,35 @@ class ChatRoomPage extends StatefulWidget {
 class _ChatRoomPageState extends State<ChatRoomPage> {
   final TextEditingController _controller = TextEditingController();
 
-  void _sendMessage() {
+  void _sendMessage() async {
     final text = _controller.text.trim();
-    if (text.isNotEmpty) {
-      FirebaseFirestore.instance
-          .collection('rooms')
-          .doc(widget.roomId)
-          .collection('messages')
-          .add({
-        'text': text,
-        'sender': '익명', // 나중에 사용자 이름으로 교체
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-      _controller.clear();
-    }
+    if (text.isEmpty) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    final nickname = userDoc.data()?['nickname'] ?? '익명';
+    final profileUrl = userDoc.data()?['profileUrl'] ??
+        'https://via.placeholder.com/150';
+
+    await FirebaseFirestore.instance
+        .collection('rooms')
+        .doc(widget.roomId)
+        .collection('messages')
+        .add({
+          'text': text,
+          'sender': nickname,
+          'uid': user.uid,
+          'profileUrl': profileUrl,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+
+    _controller.clear();
   }
 
   @override
@@ -50,9 +66,51 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 return ListView(
                   padding: const EdgeInsets.all(8),
                   children: messages.map((doc) {
-                    return ListTile(
-                      title: Text(doc['text']),
-                      subtitle: Text(doc['sender']),
+                    final message = doc.data() as Map<String, dynamic>;
+                    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+                    final isMine = message['uid'] == currentUserId;
+                                                            
+                    return Align(
+                      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Row(
+                        mainAxisAlignment:
+                            isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!isMine)
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundImage: message['profileUrl'] != null
+                                  ? NetworkImage(message['profileUrl'])
+                                  : const AssetImage('assets/default_profile.png')
+                                      as ImageProvider,
+                            ),
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment:
+                                isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                message['sender'] ?? '',
+                                style: const TextStyle(fontSize: 12, color: Colors.black87),
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                constraints: const BoxConstraints(maxWidth: 250),
+                                decoration: BoxDecoration(
+                                  color: isMine ? Colors.blue[100] : Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  message['text'] ?? '',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     );
                   }).toList(),
                 );

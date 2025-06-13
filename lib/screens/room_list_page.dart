@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'chat_room_page.dart';
 import 'login_page.dart';
+import 'create_room_page.dart';
 
 class RoomListPage extends StatelessWidget {
   const RoomListPage({super.key});
@@ -58,26 +59,10 @@ class RoomListPage extends StatelessWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final controller = TextEditingController();
-          await showDialog(
-            context: context,
-            builder: (_) => AlertDialog(
-              title: const Text('새 채팅방'),
-              content: TextField(controller: controller),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    FirebaseFirestore.instance.collection('rooms').add({
-                      'name': controller.text,
-                      'createdAt': FieldValue.serverTimestamp(),
-                    });
-                    Navigator.pop(context);
-                  },
-                  child: const Text('생성'),
-                ),
-              ],
-            ),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreateRoomPage()),
           );
         },
         child: const Icon(Icons.add),
