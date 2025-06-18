@@ -3,6 +3,7 @@ import 'screens/home_screen_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/login_page.dart';
+import 'screens/game_room_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +22,17 @@ class MyApp extends StatelessWidget {
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginPage(),
-        '/home': (context) => const HomeScreenPage(), // 여기 등록해야 함!
+        '/home': (context) => const HomeScreenPage(), 
+        '/game_room' : (context) {
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>;
+          return GameRoomPage(
+            roomId: args['roomId'],
+            roomName: args['roomName'],
+            gameId: args['gameId'],
+          );
+        },
       },
     );
   }

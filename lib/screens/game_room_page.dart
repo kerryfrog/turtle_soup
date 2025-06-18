@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class ChatRoomPage extends StatefulWidget {
+class GameRoomPage extends StatefulWidget {
   final String roomId;
   final String roomName;
-  const ChatRoomPage({super.key, required this.roomId, required this.roomName});
+  final String gameId;
+  const GameRoomPage({super.key, required this.roomId, required this.roomName, required this.gameId});
 
   @override
-  State<ChatRoomPage> createState() => _ChatRoomPageState();
+  State<GameRoomPage> createState() => _GameRoomPageState();
 }
 
-class _ChatRoomPageState extends State<ChatRoomPage> {
+class _GameRoomPageState extends State<GameRoomPage> {
   final TextEditingController _controller = TextEditingController();
 
   void _sendMessage() async {
@@ -27,16 +28,14 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         .get();
 
     final nickname = userDoc.data()?['nickname'] ?? '익명';
-    final profileUrl = userDoc.data()?['profileUrl'] ??
-        'https://via.placeholder.com/150';
+    final profileUrl =
+        userDoc.data()?['profileUrl'] ?? 'https://via.placeholder.com/150';
 
-    final currentGameId = 'placeholder_game_id';
-
-    await FirebaseFirestore.instance
+      await FirebaseFirestore.instance
         .collection('rooms')
         .doc(widget.roomId)
         .collection('games')
-        .doc(currentGameId)
+        .doc(widget.gameId)
         .collection('messages')
         .add({
           'text': text,
@@ -51,61 +50,31 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final question = args?['question'] ?? '문제가 없습니다';
+    final answer = args?['answer'] ?? '정답이 없습니다';
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.roomName),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.play_arrow),
-            tooltip: '게임 시작',
-            onPressed: () async {
-              // 1. 문제 하나 랜덤 선택
-              final problemSnapshot = await FirebaseFirestore.instance
-                  .collection('problems')
-                  .get();
-              final problemDocs = problemSnapshot.docs;
-              problemDocs.shuffle();
-              final selectedProblem = problemDocs.first.data();
-
-              // 2. 게임 생성 및 문제 정보 포함
-              final newGameDoc = FirebaseFirestore.instance
-                  .collection('rooms')
-                  .doc(widget.roomId)
-                  .collection('games')
-                  .doc();
-
-              await newGameDoc.set({
-                'createdAt': FieldValue.serverTimestamp(),
-                'problemTitle': selectedProblem['title'],
-                'problemQuestion': selectedProblem['question'],
-                'problemAnswer': selectedProblem['answer'],
-              });
-
-              final newGameId = newGameDoc.id;
-
-              // 3. 다음 화면으로 이동하면서 문제 정보 전달
-              Navigator.pushNamed(
-                context,
-                '/game_room',
-                arguments: {
-                  'roomId': widget.roomId,
-                  'roomName': selectedProblem['title'], // 문제 제목을 게임방 이름으로
-                  'gameId': newGameId,
-                  'question': selectedProblem['question'],
-                  'answer': selectedProblem['answer'],
-                },
-              );
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(widget.roomName)),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('문제', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(question),
+              ],
+            ),
+          ),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('rooms')
                   .doc(widget.roomId)
+                  .collection('games')
+                  .doc(widget.gameId)
                   .collection('messages')
                   .orderBy('timestamp')
                   .snapshots(),
@@ -117,14 +86,18 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   padding: const EdgeInsets.all(8),
                   children: messages.map((doc) {
                     final message = doc.data() as Map<String, dynamic>;
-                    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+                    final currentUserId =
+                        FirebaseAuth.instance.currentUser?.uid;
                     final isMine = message['uid'] == currentUserId;
-                                                            
+
                     return Align(
-                      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment: isMine
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
                       child: Row(
-                        mainAxisAlignment:
-                            isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
+                        mainAxisAlignment: isMine
+                            ? MainAxisAlignment.end
+                            : MainAxisAlignment.start,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (!isMine)
@@ -132,24 +105,34 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                               radius: 16,
                               backgroundImage: message['profileUrl'] != null
                                   ? NetworkImage(message['profileUrl'])
-                                  : const AssetImage('default_profile.png')
-                                      as ImageProvider,
+                                  : const AssetImage(
+                                          'default_profile.png',
+                                        )
+                                        as ImageProvider,
                             ),
                           const SizedBox(width: 8),
                           Column(
-                            crossAxisAlignment:
-                                isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                            crossAxisAlignment: isMine
+                                ? CrossAxisAlignment.end
+                                : CrossAxisAlignment.start,
                             children: [
                               Text(
                                 message['sender'] ?? '',
-                                style: const TextStyle(fontSize: 12, color: Colors.black87),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black87,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Container(
                                 padding: const EdgeInsets.all(10),
-                                constraints: const BoxConstraints(maxWidth: 250),
+                                constraints: const BoxConstraints(
+                                  maxWidth: 250,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isMine ? Colors.blue[100] : Colors.grey[300],
+                                  color: isMine
+                                      ? Colors.blue[100]
+                                      : Colors.grey[300],
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -183,7 +166,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
