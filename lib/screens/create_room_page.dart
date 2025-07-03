@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'chat_room_page.dart';
 
 class CreateRoomPage extends StatefulWidget {
@@ -19,6 +19,9 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
 
     final docRef = await FirebaseFirestore.instance.collection('rooms').add({
       'name': name,
+      'isGameActive': false,
+      'isPublic': true,
+      'roomOwnerUid': FirebaseAuth.instance.currentUser?.uid,
       'createdAt': FieldValue.serverTimestamp(),
     });
 
