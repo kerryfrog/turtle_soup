@@ -119,7 +119,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           });
       _controller.clear();
     }
-
   }
 
   @override

@@ -29,7 +29,6 @@ class MyApp extends StatelessWidget {
                   as Map<String, dynamic>;
           return GameRoomPage(
             roomId: args['roomId'],
-            roomName: args['roomName'],
             gameId: args['gameId'],
           );
         },

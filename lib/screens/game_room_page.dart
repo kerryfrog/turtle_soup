@@ -4,9 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class GameRoomPage extends StatefulWidget {
   final String roomId;
-  final String roomName;
   final String gameId;
-  const GameRoomPage({super.key, required this.roomId, required this.roomName, required this.gameId});
+  const GameRoomPage({super.key, required this.roomId, required this.gameId});
 
   @override
   State<GameRoomPage> createState() => _GameRoomPageState();
@@ -66,15 +65,16 @@ class _GameRoomPageState extends State<GameRoomPage> {
         }
 
         final data = snapshot.data!.data() as Map<String, dynamic>;
-        final question = data['problemQuestion'] ?? '문제가 없습니다';
+        final problemTitle = data['problemTitle'] ?? '게임 방';
+        final problem = data['problemQuestion'] ?? '문제가 없습니다';
         final answer = data['problemAnswer'] ?? '정답이 없습니다';
-        final hostUid = data['hostUid'];
+        final hostUid = data['quizHostUid'];
 
         final currentUid = FirebaseAuth.instance.currentUser?.uid;
         final isHost = currentUid != null && hostUid == currentUid;
 
         return Scaffold(
-          appBar: AppBar(title: Text(widget.roomId)),
+          appBar: AppBar(title: Text(problemTitle)),
           body: Column(
             children: [
               Padding(
@@ -84,7 +84,7 @@ class _GameRoomPageState extends State<GameRoomPage> {
                   children: [
                     const Text('문제', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     const SizedBox(height: 4),
-                    Text(question),
+                    Text(problem),
                   ],
                 ),
               ),
