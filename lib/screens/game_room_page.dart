@@ -13,6 +13,7 @@ class GameRoomPage extends StatefulWidget {
 
 class _GameRoomPageState extends State<GameRoomPage> {
   final TextEditingController _controller = TextEditingController();
+  Map<String, dynamic>? _replyingTo;
 
   void _sendMessage() async {
     final text = _controller.text.trim();
@@ -20,6 +21,19 @@ class _GameRoomPageState extends State<GameRoomPage> {
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
+
+    final gameDoc = await FirebaseFirestore.instance
+        .collection('rooms')
+        .doc(widget.roomId)
+        .collection('games')
+        .doc(widget.gameId)
+        .get();
+    final quizHostUid = gameDoc.data()?['quizHostUid'];
+
+    if (user.uid == quizHostUid && text == '정답') {
+      _showConfirmationDialog();
+      return;
+    }
 
     final userDoc = await FirebaseFirestore.instance
         .collection('users')
@@ -30,7 +44,7 @@ class _GameRoomPageState extends State<GameRoomPage> {
     final profileUrl =
         userDoc.data()?['profileUrl'] ?? 'https://via.placeholder.com/150';
 
-      await FirebaseFirestore.instance
+    await FirebaseFirestore.instance
         .collection('rooms')
         .doc(widget.roomId)
         .collection('games')
@@ -42,9 +56,46 @@ class _GameRoomPageState extends State<GameRoomPage> {
           'uid': user.uid,
           'profileUrl': profileUrl,
           'timestamp': FieldValue.serverTimestamp(),
+          if (_replyingTo != null) 'replyTo': _replyingTo,
         });
-
     _controller.clear();
+    setState(() {
+      _replyingTo = null;
+    });
+  }
+
+  void _showConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('정답 확인'),
+        content: const Text('정답으로 처리하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              _endGame();
+              Navigator.pop(context);
+            },
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _endGame() async {
+    final roomRef = FirebaseFirestore.instance.collection('rooms').doc(widget.roomId);
+    await roomRef.update({
+      'currentGameId': null,
+      'isGameActive': false,
+    });
+
+    // Navigate back to the chat room
+    Navigator.pop(context);
   }
 
   @override
@@ -57,7 +108,6 @@ class _GameRoomPageState extends State<GameRoomPage> {
           .doc(widget.gameId)
           .snapshots(),
       builder: (context, snapshot) {
-        print('GameRoomPage: ${widget.roomId}, ${widget.gameId}');
         if (!snapshot.hasData) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -82,7 +132,13 @@ class _GameRoomPageState extends State<GameRoomPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('문제', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const Text(
+                      '문제',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text(problem),
                   ],
@@ -110,28 +166,18 @@ class _GameRoomPageState extends State<GameRoomPage> {
                             FirebaseAuth.instance.currentUser?.uid;
                         final isMine = message['uid'] == currentUserId;
 
-                        // profileUrl 안전 처리
                         final profileUrl = message['profileUrl'];
-                        final isValidProfileUrl = profileUrl is String && profileUrl.isNotEmpty;
-                        return Align(
-                          alignment: isMine
-                              ? Alignment.centerRight
-                              : Alignment.centerLeft,
-                          child: Row(
-                            mainAxisAlignment: isMine
-                                ? MainAxisAlignment.end
-                                : MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (!isMine)
-                                CircleAvatar(
-                                  radius: 16,
-                                  backgroundImage: isValidProfileUrl
-                                      ? NetworkImage(profileUrl)
-                                      : const AssetImage('default_profile.png'),
-                                ),
-                              const SizedBox(width: 8),
-                              Column(
+                        final isValidProfileUrl =
+                            profileUrl is String && profileUrl.isNotEmpty;
+
+                        Widget msgWidget = Row(
+                          mainAxisAlignment: isMine
+                              ? MainAxisAlignment.end
+                              : MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Flexible(
+                              child: Column(
                                 crossAxisAlignment: isMine
                                     ? CrossAxisAlignment.end
                                     : CrossAxisAlignment.start,
@@ -144,6 +190,26 @@ class _GameRoomPageState extends State<GameRoomPage> {
                                     ),
                                   ),
                                   const SizedBox(height: 4),
+                                  if (message.containsKey('replyTo')) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 4,
+                                        horizontal: 8,
+                                      ),
+                                      margin: const EdgeInsets.only(bottom: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[200],
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        "${message['replyTo']['sender'] ?? ''}: ${message['replyTo']['text'] ?? ''}",
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                   Container(
                                     padding: const EdgeInsets.all(10),
                                     constraints: const BoxConstraints(
@@ -162,7 +228,41 @@ class _GameRoomPageState extends State<GameRoomPage> {
                                   ),
                                 ],
                               ),
-                            ],
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.reply,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                setState(() {
+                                  _replyingTo = message;
+                                });
+                              },
+                            ),
+                          ],
+                        );
+
+                        return Align(
+                          alignment: isMine
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: GestureDetector(
+                            onLongPress: () {
+                              setState(() {
+                                _replyingTo = message;
+                              });
+                            },
+                            onSecondaryTap: () {
+                              setState(() {
+                                _replyingTo = message;
+                              });
+                            },
+                            child: msgWidget,
                           ),
                         );
                       }).toList(),
@@ -172,18 +272,51 @@ class _GameRoomPageState extends State<GameRoomPage> {
               ),
               Padding(
                 padding: const EdgeInsets.all(8),
-                child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        decoration: const InputDecoration(hintText: '메시지 입력'),
-                        onSubmitted: (_) => _sendMessage(),
+                    if (_replyingTo != null)
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        color: Colors.grey[300],
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                "답장 대상: ${_replyingTo?['sender'] ?? ''}: ${_replyingTo?['text'] ?? ''}",
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                setState(() {
+                                  _replyingTo = null;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.send),
-                      onPressed: _sendMessage,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _controller,
+                            decoration: const InputDecoration(
+                              hintText: '메시지 입력',
+                            ),
+                            onSubmitted: (_) => _sendMessage(),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.send),
+                          onPressed: _sendMessage,
+                        ),
+                      ],
                     ),
                   ],
                 ),
