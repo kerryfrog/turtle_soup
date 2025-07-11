@@ -29,7 +29,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => ChatRoomPage(roomId: docRef.id, roomName: name),
+          builder: (_) => ChatRoomPage(roomId: docRef.id),
         ),
       );
     }

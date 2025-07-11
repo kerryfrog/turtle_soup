@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:turtle_soup/screens/room_list_page.dart';
 
 class ChatRoomPage extends StatefulWidget {
   final String roomId;
-  final String roomName;
-  const ChatRoomPage({super.key, required this.roomId, required this.roomName});
+  const ChatRoomPage({super.key, required this.roomId});
 
   @override
   State<ChatRoomPage> createState() => _ChatRoomPageState();
@@ -13,10 +13,12 @@ class ChatRoomPage extends StatefulWidget {
 
 class _ChatRoomPageState extends State<ChatRoomPage> {
   final TextEditingController _controller = TextEditingController();
+  String _roomName = '채팅방'; // Default room name
 
   @override
   void initState() {
     super.initState();
+    _fetchRoomName();
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       FirebaseFirestore.instance
@@ -25,6 +27,20 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           .update({
             'participants': FieldValue.arrayUnion([uid]),
           });
+    }
+  }
+
+  Future<void> _fetchRoomName() async {
+    try {
+      final roomDoc = await FirebaseFirestore.instance.collection('rooms').doc(widget.roomId).get();
+      if (roomDoc.exists && mounted) {
+        setState(() {
+          _roomName = roomDoc.data()?['name'] ?? '채팅방';
+        });
+      }
+    } catch (e) {
+      // Handle potential errors, e.g., logging
+      print("Error fetching room name: $e");
     }
   }
 
@@ -123,9 +139,19 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const RoomListPage()),
+          (route) => false,
+        );
+      },
+      child: Scaffold(
       appBar: AppBar(
-        title: Text(widget.roomName),
+        title: Text(_roomName),
         actions: [
           FutureBuilder<DocumentSnapshot>(
             future: FirebaseFirestore.instance
@@ -262,6 +288,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           )
         ],
       ),
-    );
+    ), // This closes the Scaffold
+   ); // This closes the PopScope
   }
 }

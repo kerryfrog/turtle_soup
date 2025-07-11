@@ -46,7 +46,7 @@ class RoomListPage extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (_) =>
-                                ChatRoomPage(roomId: room.id, roomName: room['name']),
+                                ChatRoomPage(roomId: room.id),
                           ),
                         );
                       },

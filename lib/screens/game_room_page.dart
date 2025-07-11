@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:turtle_soup/screens/chat_room_page.dart';
 
 class GameRoomPage extends StatefulWidget {
   final String roomId;
@@ -68,19 +69,19 @@ class _GameRoomPageState extends State<GameRoomPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('정답 확인'),
-        content: const Text('정답으로 처리하시겠습니까?'),
+        title: const Text('정답입니까?'),
+        content: const Text('네를 누르면 정답 처리가 되면서, 게임방이 종료됩니다.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
+            child: const Text('아니오'),
           ),
           TextButton(
             onPressed: () {
-              _endGame();
-              Navigator.pop(context);
+              Navigator.pop(context); // Close the dialog first
+              _endGame(); // Then end the game and pop the page
             },
-            child: const Text('확인'),
+            child: const Text('네'),
           ),
         ],
       ),
@@ -89,13 +90,17 @@ class _GameRoomPageState extends State<GameRoomPage> {
 
   Future<void> _endGame() async {
     final roomRef = FirebaseFirestore.instance.collection('rooms').doc(widget.roomId);
+
+    // First, update the room to reflect that the game is over.
     await roomRef.update({
       'currentGameId': null,
       'isGameActive': false,
     });
 
-    // Navigate back to the chat room
-    Navigator.pop(context);
+    // Then, delete the game document. This will trigger all clients to navigate back
+    // from the game room because the stream they are listening to will report
+    // that the document no longer exists.
+    await roomRef.collection('games').doc(widget.gameId).delete();
   }
 
   @override
@@ -108,12 +113,28 @@ class _GameRoomPageState extends State<GameRoomPage> {
           .doc(widget.gameId)
           .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+        // Handle connection state and potential errors first.
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasError) {
+          return Scaffold(body: Center(child: Text("Error: ${snapshot.error}")));
         }
 
+        // If the document doesn't exist (e.g., game ended and deleted), navigate back.
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => ChatRoomPage(roomId: widget.roomId)),
+              );
+            }
+          });
+          return const Scaffold(body: Center(child: Text("Game over. Returning to chat...")));
+        }
+
+        // If we have data and the document exists, proceed to build the UI.
         final data = snapshot.data!.data() as Map<String, dynamic>;
         final problemTitle = data['problemTitle'] ?? '게임 방';
         final problem = data['problemQuestion'] ?? '문제가 없습니다';
