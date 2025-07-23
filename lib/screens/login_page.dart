@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'register_page.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,7 +16,7 @@ class _LoginPageState extends State<LoginPage> {
     text: '111111',
   );
 
-   void _login() async {
+  void _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     try {
@@ -25,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
         password: password,
       );
       print('로그인 성공!');
-      Navigator.pushReplacementNamed(context, '/home');
+      // Navigator.pushReplacementNamed(context, '/home'); // Handled by Riverpod authStateProvider
     } on FirebaseAuthException catch (e) {
       showDialog(
         context: context,
@@ -44,7 +44,6 @@ class _LoginPageState extends State<LoginPage> {
       print('로그인 실패: $e');
     }
   }
-
 
   void _register() {
     Navigator.push(

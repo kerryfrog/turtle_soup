@@ -15,6 +15,8 @@ class GameRoomPage extends StatefulWidget {
 class _GameRoomPageState extends State<GameRoomPage> {
   final TextEditingController _controller = TextEditingController();
   Map<String, dynamic>? _replyingTo;
+  final ScrollController _scrollController = ScrollController();
+  String? _lastProcessedMessageId;
 
   void _sendMessage() async {
     final text = _controller.text.trim();
@@ -103,6 +105,22 @@ class _GameRoomPageState extends State<GameRoomPage> {
     await roomRef.collection('games').doc(widget.gameId).delete();
   }
 
+  void _showAnswerPopup(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('정답!'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<DocumentSnapshot>(
@@ -179,7 +197,30 @@ class _GameRoomPageState extends State<GameRoomPage> {
                     if (!snapshot.hasData)
                       return const Center(child: CircularProgressIndicator());
                     final messages = snapshot.data!.docs;
+
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (_scrollController.hasClients) {
+                        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+                      }
+                      if (messages.isNotEmpty) {
+                        final lastMessage = messages.last;
+                        final lastMessageId = lastMessage.id;
+                        final messageText =
+                            (lastMessage.data() as Map<String, dynamic>)['text']
+                                as String?;
+
+                        if (lastMessageId != _lastProcessedMessageId) {
+                          _lastProcessedMessageId = lastMessageId;
+                          if (messageText != null &&
+                              messageText.contains('정답')) {
+                            _showAnswerPopup(messageText);
+                          }
+                        }
+                      }
+                    });
+
                     return ListView(
+                      controller: _scrollController,
                       padding: const EdgeInsets.all(8),
                       children: messages.map((doc) {
                         final message = doc.data() as Map<String, dynamic>;

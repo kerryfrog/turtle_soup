@@ -143,152 +143,159 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       canPop: false,
       onPopInvoked: (didPop) {
         if (didPop) return;
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const RoomListPage()),
-          (route) => false,
-        );
+        Navigator.pop(context);
       },
       child: Scaffold(
-      appBar: AppBar(
-        title: Text(_roomName),
-        actions: [
-          FutureBuilder<DocumentSnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('rooms')
-                .doc(widget.roomId)
-                .get(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return SizedBox.shrink();
-              final data = snapshot.data!.data() as Map<String, dynamic>;
-              final isOwner = data['roomOwnerUid'] == FirebaseAuth.instance.currentUser?.uid;
-              return isOwner
-                  ? IconButton(
-                      icon: const Icon(Icons.play_arrow),
-                      tooltip: '게임 시작',
-                      onPressed: _startGame,
-                    )
-                  : SizedBox.shrink();
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          StreamBuilder<DocumentSnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('rooms')
-                .doc(widget.roomId)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return SizedBox.shrink();
-
-              final roomData = snapshot.data!.data() as Map<String, dynamic>;
-              final gameId = roomData['currentGameId'];
-
-              if (gameId != null) {
-                Future.microtask(() {
-                  Navigator.pushReplacementNamed(
-                    context,
-                    '/game_room',
-                    arguments: {
-                      'roomId': widget.roomId,
-                      'gameId': gameId,
-                    },
-                  );
-                });
-              }
-
-              return SizedBox.shrink();
-            },
-          ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
+        appBar: AppBar(
+          title: Text(_roomName),
+          actions: [
+            FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('rooms')
+                  .doc(widget.roomId)
+                  .get(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const SizedBox.shrink();
+                final data = snapshot.data!.data() as Map<String, dynamic>;
+                final isOwner =
+                    data['roomOwnerUid'] == FirebaseAuth.instance.currentUser?.uid;
+                return isOwner
+                    ? IconButton(
+                        icon: const Icon(Icons.play_arrow),
+                        tooltip: '게임 시작',
+                        onPressed: _startGame,
+                      )
+                    : const SizedBox.shrink();
+              },
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            StreamBuilder<DocumentSnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('rooms')
                   .doc(widget.roomId)
-                  .collection('messages')
-                  .orderBy('timestamp')
                   .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData)
-                  return const Center(child: CircularProgressIndicator());
-                final messages = snapshot.data!.docs;
-                return ListView(
-                  padding: const EdgeInsets.all(8),
-                  children: messages.map((doc) {
-                    final message = doc.data() as Map<String, dynamic>;
-                    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-                    final isMine = message['uid'] == currentUserId;
+                if (!snapshot.hasData) return const SizedBox.shrink();
 
-                    return Align(
-                      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Row(
-                        mainAxisAlignment:
-                            isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (!isMine)
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundImage: message['profileUrl'] != null
-                                  ? NetworkImage(message['profileUrl'])
-                                  : const AssetImage('default_profile.png')
-                                      as ImageProvider,
-                            ),
-                          const SizedBox(width: 8),
-                          Column(
-                            crossAxisAlignment:
-                                isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                message['sender'] ?? '',
-                                style: const TextStyle(fontSize: 12, color: Colors.black87),
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                constraints: const BoxConstraints(maxWidth: 250),
-                                decoration: BoxDecoration(
-                                  color: isMine ? Colors.blue[100] : Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  message['text'] ?? '',
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+                final roomData = snapshot.data!.data() as Map<String, dynamic>;
+                final gameId = roomData['currentGameId'];
+
+                if (gameId != null) {
+                  Future.microtask(() {
+                    Navigator.pushReplacementNamed(
+                      context,
+                      '/game_room',
+                      arguments: {
+                        'roomId': widget.roomId,
+                        'gameId': gameId,
+                      },
                     );
-                  }).toList(),
-                );
+                  });
+                }
+
+                return const SizedBox.shrink();
               },
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(hintText: '메시지 입력'),
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                ),
-              ],
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('rooms')
+                    .doc(widget.roomId)
+                    .collection('messages')
+                    .orderBy('timestamp')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final messages = snapshot.data!.docs;
+                  return ListView(
+                    padding: const EdgeInsets.all(8),
+                    children: messages.map((doc) {
+                      final message = doc.data() as Map<String, dynamic>;
+                      final currentUserId =
+                          FirebaseAuth.instance.currentUser?.uid;
+                      final isMine = message['uid'] == currentUserId;
+
+                      return Align(
+                        alignment: isMine
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: Row(
+                          mainAxisAlignment: isMine
+                              ? MainAxisAlignment.end
+                              : MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (!isMine)
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundImage: message['profileUrl'] != null
+                                    ? NetworkImage(message['profileUrl'])
+                                    : const AssetImage('assets/default_profile.png')
+                                        as ImageProvider,
+                              ),
+                            const SizedBox(width: 8),
+                            Column(
+                              crossAxisAlignment: isMine
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message['sender'] ?? '',
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Colors.black87),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 250),
+                                  decoration: BoxDecoration(
+                                    color: isMine
+                                        ? Colors.blue[100]
+                                        : Colors.grey[300],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    message['text'] ?? '',
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
             ),
-          )
-        ],
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      decoration: const InputDecoration(hintText: '메시지 입력'),
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.send),
+                    onPressed: _sendMessage,
+                  ),
+                ],
+              ),
+            )
+          ],
+        ),
       ),
-    ), // This closes the Scaffold
-   ); // This closes the PopScope
+    );
   }
 }
