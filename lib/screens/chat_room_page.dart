@@ -52,17 +52,38 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       FirebaseFirestore.instance
           .collection('rooms')
           .doc(widget.roomId)
-          .update({
-            'participants': FieldValue.arrayRemove([uid]),
-          }).then((_) async {
-        final roomDoc = await FirebaseFirestore.instance
-            .collection('rooms')
-            .doc(widget.roomId)
-            .get();
-        if (roomDoc.exists) {
-          final participants = List<String>.from(roomDoc.data()?['participants'] ?? []);
-          if (participants.isEmpty) {
-            await roomDoc.reference.delete();
+          .get()
+          .then((roomDocSnapshot) async {
+        if (roomDocSnapshot.exists) {
+          final roomData = roomDocSnapshot.data() as Map<String, dynamic>;
+          final currentParticipants = List<String>.from(roomData['participants'] ?? []);
+          final roomOwnerUid = roomData['roomOwnerUid'];
+
+          // Remove current user from participants
+          final updatedParticipants = List<String>.from(currentParticipants)..remove(uid);
+
+          await FirebaseFirestore.instance
+              .collection('rooms')
+              .doc(widget.roomId)
+              .update({
+                'participants': updatedParticipants,
+              });
+
+          // If the leaving user was the owner and there are still participants, transfer ownership
+          if (uid == roomOwnerUid && updatedParticipants.isNotEmpty) {
+            final newOwnerUid = updatedParticipants.first;
+            await FirebaseFirestore.instance
+                .collection('rooms')
+                .doc(widget.roomId)
+                .update({
+                  'roomOwnerUid': newOwnerUid,
+                });
+            print('Room ownership transferred to $newOwnerUid');
+          }
+
+          // If no participants left, delete the room
+          if (updatedParticipants.isEmpty) {
+            await roomDocSnapshot.reference.delete();
             print('Room ${widget.roomId} deleted as all participants left.');
           }
         }
@@ -162,11 +183,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         appBar: AppBar(
           title: Text(_roomName),
           actions: [
-            FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
                   .collection('rooms')
                   .doc(widget.roomId)
-                  .get(),
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const SizedBox.shrink();
                 final data = snapshot.data!.data() as Map<String, dynamic>;
@@ -227,9 +248,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                             if (!userSnapshot.hasData) return const SizedBox.shrink();
                             final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
                             final nickname = userData?['nickname'] ?? '알 수 없음';
+                            final isOwner = uid == roomData['roomOwnerUid'];
                             return Chip(
                               label: Text(nickname, style: const TextStyle(color: Colors.white)),
-                              backgroundColor: Colors.lightBlueAccent,
+                              backgroundColor: isOwner ? Colors.orange : Colors.lightBlueAccent,
                               side: BorderSide.none,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
                             );
