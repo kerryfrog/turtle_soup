@@ -68,13 +68,10 @@ class _MyPageState extends State<MyPage> {
         title: const Text('마이페이지'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: '로그아웃',
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-              if (context.mounted) {
-                Navigator.pushReplacementNamed(context, '/login');
-              }
+            icon: const Icon(Icons.settings),
+            tooltip: '환경 설정',
+            onPressed: () {
+              Navigator.pushNamed(context, '/settings');
             },
           ),
         ],
@@ -144,3 +141,4 @@ class _MyPageState extends State<MyPage> {
     );
   }
 }
+

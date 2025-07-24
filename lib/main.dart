@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:turtle_soup/theme/app_theme.dart';
 import 'firebase_options.dart';
 import 'screens/login_page.dart';
 import 'screens/game_room_page.dart';
 import 'screens/home_screen_page.dart'; // Import HomeScreenPage
+import 'screens/settings_page.dart'; // Import SettingsPage
 
 // Provider for authentication state changes
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -28,6 +30,7 @@ class MyApp extends ConsumerWidget {
 
     return MaterialApp(
       title: 'Turtle Soup',
+      theme: appTheme,
       debugShowCheckedModeBanner: false,
       home: authState.when(
         data: (user) => user != null ? const HomeScreenPage() : const LoginPage(),
@@ -39,6 +42,7 @@ class MyApp extends ConsumerWidget {
         ),
       ),
       routes: {
+        '/login': (context) => const LoginPage(),
         '/game_room': (context) {
           final args = ModalRoute.of(context)!.settings.arguments
               as Map<String, dynamic>;
@@ -47,6 +51,7 @@ class MyApp extends ConsumerWidget {
             gameId: args['gameId'],
           );
         },
+        '/settings': (context) => const SettingsPage(),
       },
     );
   }

@@ -31,8 +31,18 @@
 
   <title>turtle_soup</title>
   <link rel="manifest" href="manifest.json">
+  <script src="https://apis.google.com/js/platform.js" async defer></script>
+  <script>
+    function initGapi() {
+      gapi.load('client', () => {
+        // gapi.client is now loaded and ready to use.
+        // You might want to add more initialization here if needed.
+        console.log('gapi.client loaded successfully.');
+      });
+    }
+  </script>
 </head>
-<body>
+<body onload="initGapi()">
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
