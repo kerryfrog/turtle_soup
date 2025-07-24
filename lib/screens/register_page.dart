@@ -84,6 +84,20 @@ class _NicknamePageState extends State<NicknamePage> {
     }
 
     try {
+      // Check if nickname already exists
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('nickname', isEqualTo: nickname)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('이미 사용 중인 닉네임입니다.')),
+        );
+        return;
+      }
+
       await FirebaseFirestore.instance.collection('users').doc(widget.user.uid).set({
         'email': widget.user.email,
         'nickname': nickname,

@@ -15,6 +15,7 @@ class ChatRoomPage extends StatefulWidget {
 class _ChatRoomPageState extends State<ChatRoomPage> {
   final TextEditingController _controller = TextEditingController();
   String _roomName = '채팅방'; // Default room name
+  String? _roomOwnerUid; // Add this line
 
   @override
   void initState() {
@@ -37,6 +38,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       if (roomDoc.exists && mounted) {
         setState(() {
           _roomName = roomDoc.data()?['name'] ?? '채팅방';
+          _roomOwnerUid = roomDoc.data()?['roomOwnerUid']; // Update _roomOwnerUid here
         });
       }
     } catch (e) {
@@ -216,6 +218,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
                 final roomData = snapshot.data!.data() as Map<String, dynamic>;
                 final gameId = roomData['currentGameId'];
+                final roomOwnerUid = roomData['roomOwnerUid']; // 방장 UID 가져오기
 
                 if (gameId != null) {
                   Future.microtask(() {
@@ -283,12 +286,14 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                       final currentUserId =
                           FirebaseAuth.instance.currentUser?.uid;
                       final isMine = message['uid'] == currentUserId;
+                      final isSenderRoomOwner = message['uid'] == _roomOwnerUid; // 메시지 보낸 사람이 방장인지 확인
 
                       return MessageBubble(
                         sender: message['sender'] ?? '',
                         text: message['text'] ?? '',
                         profileUrl: message['profileUrl'] ?? '',
                         isMine: isMine,
+                        isRoomOwner: isSenderRoomOwner, // isRoomOwner 속성 전달
                       );
                     }).toList(),
                   );

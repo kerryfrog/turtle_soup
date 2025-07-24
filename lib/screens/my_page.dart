@@ -14,12 +14,10 @@ class _MyPageState extends State<MyPage> {
 
   void _selectProfile(BuildContext context, String uid) {
     final List<String> profileOptions = [
-      'https://file.notion.so/f/f/b940d603-de69-4a88-92da-6f46a5fdab6c/3f44e8b3-77d6-4d88-ab6a-53ad13bce94a/default_profile.png?table=block&id=23ab2ff3-c1ef-804a-be3b-cc8017c8944c&spaceId=b940d603-de69-4a88-92da-6f46a5fdab6c&expirationTimestamp=1753351200000&signature=MB6uUYslHj_TAcCCnCCqj8iTC6o_ve3-DRnsziL0MMk&downloadName=default_profile.png',
-      'https://file.notion.so/f/f/b940d603-de69-4a88-92da-6f46a5fdab6c/7a6429f3-96ac-49a5-b31a-37a245fcfb32/default_profile2.png?table=block&id=23ab2ff3-c1ef-8071-8ae8-e8bc647e9724&spaceId=b940d603-de69-4a88-92da-6f46a5fdab6c&expirationTimestamp=1753351200000&signature=Upy4-1r_KeQCCutCNUJ63m6r6kglIam71W4zSnHeUKE&downloadName=default_profile2.png',
-      'https://file.notion.so/f/f/b940d603-de69-4a88-92da-6f46a5fdab6c/29cb2358-898b-4a7e-8c74-675f0938ceba/monkey.png?table=block&id=23ab2ff3-c1ef-80c7-ac22-e5c9cdff9c67&spaceId=b940d603-de69-4a88-92da-6f46a5fdab6c&expirationTimestamp=1753351200000&signature=Ac7oq32GU_CmluDXhcuXG_TVN4E2opGQ5FLEDPYbTD8&downloadName=monkey.png',
-      'https://file.notion.so/f/f/b940d603-de69-4a88-92da-6f46a5fdab6c/ff38f469-884a-4206-bf8a-7fff40751964/turtle.png?table=block&id=23ab2ff3-c1ef-800d-93cc-d610e2e7c258&spaceId=b940d603-de69-4a88-92da-6f46a5fdab6c&expirationTimestamp=1753351200000&signature=7MvpnqRUm13MLHdXWZTv_KBOws8nOtlcF8fZL4_2kLE&downloadName=turtle.png',
-      'https://example.com/image5.png',
-      'https://example.com/image6.png',
+      'https://i.postimg.cc/XWRnNWY8/default-profile.png',
+      'https://i.postimg.cc/kXjkPKT7/default-profile2.png',
+      'https://i.postimg.cc/sX9N6hBd/monkey.png',
+      'https://i.postimg.cc/bNvBgdpW/turtle.png'
     ];
 
     showModalBottomSheet(
@@ -54,6 +52,69 @@ class _MyPageState extends State<MyPage> {
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showNicknameChangeDialog(String currentNickname, String uid) {
+    TextEditingController nicknameController = TextEditingController(text: currentNickname);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('닉네임 변경'),
+          content: TextField(
+            controller: nicknameController,
+            decoration: const InputDecoration(hintText: '새 닉네임을 입력하세요'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final newNickname = nicknameController.text.trim();
+                if (newNickname.isNotEmpty && newNickname != currentNickname) {
+                  // Check if nickname already exists
+                  final querySnapshot = await FirebaseFirestore.instance
+                      .collection('users')
+                      .where('nickname', isEqualTo: newNickname)
+                      .limit(1)
+                      .get();
+
+                  if (querySnapshot.docs.isNotEmpty) {
+                    // Nickname already exists, check if it's the current user's nickname
+                    if (querySnapshot.docs.first.id != uid) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('이미 사용 중인 닉네임입니다.')),
+                        );
+                        Navigator.pop(context);
+                      }
+                      return; // Stop further execution
+                    }
+                  }
+
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(uid)
+                      .update({'nickname': newNickname});
+                  if (mounted) {
+                    Navigator.pop(context);
+                    setState(() {}); // Rebuild to show updated nickname
+                  }
+                } else {
+                  if (mounted) {
+                    Navigator.pop(context);
+                  }
+                }
+              },
+              child: const Text('변경'),
+            ),
+          ],
         );
       },
     );
@@ -125,7 +186,7 @@ class _MyPageState extends State<MyPage> {
                             ],
                           ),
                           padding: const EdgeInsets.all(4),
-                          child: const Icon(Icons.settings, size: 20),
+                          child: const Icon(Icons.edit, size: 20),
                         ),
                       ),
                     ),
@@ -133,6 +194,15 @@ class _MyPageState extends State<MyPage> {
                 ),
                 const SizedBox(height: 16),
                 Text('닉네임: $nickname', style: const TextStyle(fontSize: 20)),
+                ListTile(
+                  leading: const Icon(Icons.edit_note),
+                  title: const Text('닉네임 변경'),
+                  onTap: () {
+                    if (user?.uid != null) {
+                      _showNicknameChangeDialog(nickname, user!.uid);
+                    }
+                  },
+                ),
               ],
             ),
           );

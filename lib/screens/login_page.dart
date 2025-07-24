@@ -18,6 +18,7 @@ class _LoginPageState extends State<LoginPage> {
   );
 
   void _login() async {
+    print('이메일/비밀번호 로그인 버튼 클릭됨');
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     try {
@@ -46,6 +47,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _loginWithGoogle() async {
+    print('Google 로그인 버튼 클릭됨');
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn(clientId: '102119003728-b4fiegvc3rm092gvjfp9t5pkosp53idr.apps.googleusercontent.com').signIn();
       if (googleUser == null) {

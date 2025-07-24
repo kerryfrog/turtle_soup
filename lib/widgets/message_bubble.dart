@@ -5,6 +5,7 @@ class MessageBubble extends StatelessWidget {
   final String text;
   final String profileUrl;
   final bool isMine;
+  final bool isRoomOwner; // New property
   final Map<String, dynamic>? replyTo;
 
   const MessageBubble({
@@ -13,6 +14,7 @@ class MessageBubble extends StatelessWidget {
     required this.text,
     required this.profileUrl,
     required this.isMine,
+    this.isRoomOwner = false, // Default to false
     this.replyTo,
   });
 
@@ -64,7 +66,9 @@ class MessageBubble extends StatelessWidget {
                 padding: const EdgeInsets.all(10),
                 constraints: const BoxConstraints(maxWidth: 250),
                 decoration: BoxDecoration(
-                  color: isMine ? Colors.blue[100] : Colors.grey[300],
+                  color: isMine
+                      ? Colors.blue[100]
+                      : (isRoomOwner ? Colors.amber[100] : Colors.grey[300]), // 방장 메시지 색상 변경
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
