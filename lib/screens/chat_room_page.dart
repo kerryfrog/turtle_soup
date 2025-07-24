@@ -1,3 +1,4 @@
+import 'package:turtle_soup/widgets/message_composer.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -53,7 +54,19 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           .doc(widget.roomId)
           .update({
             'participants': FieldValue.arrayRemove([uid]),
-          });
+          }).then((_) async {
+        final roomDoc = await FirebaseFirestore.instance
+            .collection('rooms')
+            .doc(widget.roomId)
+            .get();
+        if (roomDoc.exists) {
+          final participants = List<String>.from(roomDoc.data()?['participants'] ?? []);
+          if (participants.isEmpty) {
+            await roomDoc.reference.delete();
+            print('Room ${widget.roomId} deleted as all participants left.');
+          }
+        }
+      });
     }
     super.dispose();
   }
@@ -260,23 +273,9 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 },
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      decoration: const InputDecoration(hintText: '메시지 입력'),
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.send),
-                    onPressed: _sendMessage,
-                  ),
-                ],
-              ),
+            MessageComposer(
+              controller: _controller,
+              onSend: _sendMessage,
             )
           ],
         ),
