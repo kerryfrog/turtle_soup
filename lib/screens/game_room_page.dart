@@ -1,3 +1,4 @@
+import 'package:turtle_soup/widgets/message_bubble.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -228,87 +229,6 @@ class _GameRoomPageState extends State<GameRoomPage> {
                             FirebaseAuth.instance.currentUser?.uid;
                         final isMine = message['uid'] == currentUserId;
 
-                        final profileUrl = message['profileUrl'];
-                        final isValidProfileUrl =
-                            profileUrl is String && profileUrl.isNotEmpty;
-
-                        Widget msgWidget = Row(
-                          mainAxisAlignment: isMine
-                              ? MainAxisAlignment.end
-                              : MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Flexible(
-                              child: Column(
-                                crossAxisAlignment: isMine
-                                    ? CrossAxisAlignment.end
-                                    : CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    message['sender'] ?? '',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  if (message.containsKey('replyTo')) ...[
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 4,
-                                        horizontal: 8,
-                                      ),
-                                      margin: const EdgeInsets.only(bottom: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[200],
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        "${message['replyTo']['sender'] ?? ''}: ${message['replyTo']['text'] ?? ''}",
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.black54,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 250,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isMine
-                                          ? Colors.blue[100]
-                                          : Colors.grey[300],
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      message['text'] ?? '',
-                                      style: const TextStyle(fontSize: 16),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            IconButton(
-                              icon: const Icon(
-                                Icons.reply,
-                                size: 16,
-                                color: Colors.grey,
-                              ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () {
-                                setState(() {
-                                  _replyingTo = message;
-                                });
-                              },
-                            ),
-                          ],
-                        );
-
                         return Align(
                           alignment: isMine
                               ? Alignment.centerRight
@@ -324,7 +244,13 @@ class _GameRoomPageState extends State<GameRoomPage> {
                                 _replyingTo = message;
                               });
                             },
-                            child: msgWidget,
+                            child: MessageBubble(
+                              sender: message['sender'] ?? '',
+                              text: message['text'] ?? '',
+                              profileUrl: message['profileUrl'] ?? '',
+                              isMine: isMine,
+                              replyTo: message['replyTo'],
+                            ),
                           ),
                         );
                       }).toList(),

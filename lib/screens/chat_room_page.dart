@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:turtle_soup/screens/room_list_page.dart';
+import 'package:turtle_soup/widgets/message_bubble.dart';
 
 class ChatRoomPage extends StatefulWidget {
   final String roomId;
@@ -196,7 +196,36 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   });
                 }
 
-                return const SizedBox.shrink();
+
+                final participants = List<String>.from(roomData['participants'] ?? []);
+                return Container(
+                  width: double.infinity,
+                  color: Colors.blueGrey.shade50,
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: participants.map((uid) {
+                        return FutureBuilder<DocumentSnapshot>(
+                          future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
+                          builder: (context, userSnapshot) {
+                            if (!userSnapshot.hasData) return const SizedBox.shrink();
+                            final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                            final nickname = userData?['nickname'] ?? '알 수 없음';
+                            return Chip(
+                              label: Text(nickname, style: const TextStyle(color: Colors.white)),
+                              backgroundColor: Colors.lightBlueAccent,
+                              side: BorderSide.none,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                            );
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                );
               },
             ),
             Expanded(
@@ -220,55 +249,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                           FirebaseAuth.instance.currentUser?.uid;
                       final isMine = message['uid'] == currentUserId;
 
-                      return Align(
-                        alignment: isMine
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Row(
-                          mainAxisAlignment: isMine
-                              ? MainAxisAlignment.end
-                              : MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (!isMine)
-                              CircleAvatar(
-                                radius: 16,
-                                backgroundImage: message['profileUrl'] != null
-                                    ? NetworkImage(message['profileUrl'])
-                                    : const AssetImage('assets/default_profile.png')
-                                        as ImageProvider,
-                              ),
-                            const SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: isMine
-                                  ? CrossAxisAlignment.end
-                                  : CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  message['sender'] ?? '',
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Colors.black87),
-                                ),
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 250),
-                                  decoration: BoxDecoration(
-                                    color: isMine
-                                        ? Colors.blue[100]
-                                        : Colors.grey[300],
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    message['text'] ?? '',
-                                    style: const TextStyle(fontSize: 16),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                      return MessageBubble(
+                        sender: message['sender'] ?? '',
+                        text: message['text'] ?? '',
+                        profileUrl: message['profileUrl'] ?? '',
+                        isMine: isMine,
                       );
                     }).toList(),
                   );
