@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:turtle_soup/screens/chat_room_page.dart';
 import 'package:turtle_soup/screens/room_list_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class GameRoomPage extends StatefulWidget {
   final String roomId;
@@ -21,6 +22,18 @@ class _GameRoomPageState extends State<GameRoomPage> {
   String? _lastProcessedMessageId;
 
   Future<bool> _onWillPop() async {
+    final prefs = await SharedPreferences.getInstance();
+    final wasCrashed = prefs.getBool('crashed_${widget.roomId}') ?? false;
+
+    if (wasCrashed) {
+      prefs.remove('crashed_${widget.roomId}');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const RoomListPage()),
+      );
+      return false;
+    }
+
     final shouldLeave = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -39,6 +52,17 @@ class _GameRoomPageState extends State<GameRoomPage> {
       ),
     );
     if (shouldLeave == true) {
+      final prefs = await SharedPreferences.getInstance();
+      prefs.remove('crashed_${widget.roomId}');
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({'currentRoomId': FieldValue.delete(), 'inActiveGame': false});
+      }
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const RoomListPage()),
@@ -104,10 +128,17 @@ class _GameRoomPageState extends State<GameRoomPage> {
         .collection('games')
         .doc(widget.gameId)
         .delete();
+    // Remove crashed state when game ends
+    final prefs = await SharedPreferences.getInstance();
+    prefs.remove('crashed_${widget.roomId}');
   }
 
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setBool('crashed_${widget.roomId}', true);
+    });
     return WillPopScope(
       onWillPop: _onWillPop,
       child: StreamBuilder<DocumentSnapshot>(
@@ -150,7 +181,41 @@ class _GameRoomPageState extends State<GameRoomPage> {
           final isHost = currentUid != null && hostUid == currentUid;
 
           return Scaffold(
-            appBar: AppBar(title: Text(problemTitle)),
+            appBar: AppBar(
+              title: Text(problemTitle),
+              actions: [
+                if (isHost)
+                  IconButton(
+                    icon: const Icon(Icons.security), // 정답 아이콘
+                    tooltip: '정답 확인',
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (context) {
+                          return Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '정답',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(answer),
+                              ],
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+              ],
+            ),
             body: Column(
               children: [
                 Padding(
@@ -282,36 +347,7 @@ class _GameRoomPageState extends State<GameRoomPage> {
                 ),
               ],
             ),
-            floatingActionButton: isHost
-                ? FloatingActionButton(
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        builder: (context) {
-                          return Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  '정답',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(answer),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                    child: const Icon(Icons.security),
-                  )
-                : null,
+            floatingActionButton: null,
           );
         },
       ),

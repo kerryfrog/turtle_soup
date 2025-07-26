@@ -16,6 +16,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   final TextEditingController _controller = TextEditingController();
   String _roomName = '채팅방'; // Default room name
   String? _roomOwnerUid; // Add this line
+  bool _isOwnerTransferModalShown = false; // New state variable
 
   @override
   void initState() {
@@ -30,6 +31,73 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             'participants': FieldValue.arrayUnion([uid]),
           });
     }
+  }
+
+  Future<void> _showOwnerTransferModal(String currentUserUid, Map<String, dynamic> roomData) async {
+    final roomId = widget.roomId;
+    final shouldBecomeOwner = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('방장 위임 요청'),
+        content: const Text('이전 방장이 나갔습니다. 새로운 방장이 되시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false), // No
+            child: const Text('아니요'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true), // Yes
+            child: const Text('네'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldBecomeOwner == true) {
+      // User accepted to become owner
+      await FirebaseFirestore.instance.collection('rooms').doc(roomId).update({
+        'roomOwnerUid': currentUserUid,
+        'ownerTransferPending': false,
+        'previousOwnerUid': FieldValue.delete(),
+        'ownerCandidates': FieldValue.delete(),
+      });
+      // Add system message
+      final nickname = (await FirebaseFirestore.instance.collection('users').doc(currentUserUid).get()).data()?['nickname'] ?? '새로운 방장';
+      await FirebaseFirestore.instance.collection('rooms').doc(roomId).collection('messages').add({
+        'text': '$nickname님이 새로운 방장이 되었습니다.',
+        'sender': 'System',
+        'uid': 'system',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } else {
+      // User refused to become owner
+      final updatedCandidates = List<String>.from(roomData['ownerCandidates'] ?? [])..remove(currentUserUid);
+      await FirebaseFirestore.instance.collection('rooms').doc(roomId).update({
+        'ownerCandidates': updatedCandidates,
+      });
+
+      if (updatedCandidates.isEmpty) {
+        // All candidates refused, end game (this will be handled in a later step)
+        await FirebaseFirestore.instance.collection('rooms').doc(roomId).update({
+          'ownerTransferPending': false,
+          'previousOwnerUid': FieldValue.delete(),
+          'ownerCandidates': FieldValue.delete(),
+          'isGameActive': false, // 게임 종료
+        });
+        await FirebaseFirestore.instance.collection('rooms').doc(roomId).collection('messages').add({
+          'text': '모든 참가자가 방장 위임을 거부하여 게임이 종료됩니다.',
+          'sender': 'System',
+          'uid': 'system',
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+        if (mounted) {
+          Navigator.pop(context); // Go back to room list
+        }
+      }
+    }
+    // Reset the flag after handling the modal, so it can be shown again if a new transfer request comes
+    _isOwnerTransferModalShown = false;
   }
 
   Future<void> _fetchRoomName() async {
@@ -64,6 +132,18 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           // Remove current user from participants
           final updatedParticipants = List<String>.from(currentParticipants)..remove(uid);
 
+          // Add a message to the chat indicating the user has left
+          await FirebaseFirestore.instance
+              .collection('rooms')
+              .doc(widget.roomId)
+              .collection('messages')
+              .add({
+                'text': '${(await FirebaseFirestore.instance.collection('users').doc(uid).get()).data()?['nickname'] ?? '알 수 없는 사용자'}님이 방을 나갔습니다.',
+                'sender': 'System',
+                'uid': 'system',
+                'timestamp': FieldValue.serverTimestamp(),
+              });
+
           await FirebaseFirestore.instance
               .collection('rooms')
               .doc(widget.roomId)
@@ -71,16 +151,28 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 'participants': updatedParticipants,
               });
 
-          // If the leaving user was the owner and there are still participants, transfer ownership
+          // If the leaving user was the owner and there are still participants, initiate ownership transfer
           if (uid == roomOwnerUid && updatedParticipants.isNotEmpty) {
-            final newOwnerUid = updatedParticipants.first;
             await FirebaseFirestore.instance
                 .collection('rooms')
                 .doc(widget.roomId)
                 .update({
-                  'roomOwnerUid': newOwnerUid,
+                  'ownerTransferPending': true,
+                  'previousOwnerUid': uid,
+                  'ownerCandidates': updatedParticipants, // Store who can be the new owner
                 });
-            print('Room ownership transferred to $newOwnerUid');
+            // Add a system message to the chat
+            await FirebaseFirestore.instance
+                .collection('rooms')
+                .doc(widget.roomId)
+                .collection('messages')
+                .add({
+                  'text': '방장이 나갔습니다. 새로운 방장을 선택해주세요.',
+                  'sender': 'System',
+                  'uid': 'system',
+                  'timestamp': FieldValue.serverTimestamp(),
+                });
+            print('Owner transfer initiated for room ${widget.roomId}');
           }
 
           // If no participants left, delete the room
@@ -125,6 +217,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       'currentGameId': newGameId,
       'isGameActive' : true,
     });
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).update({
+        'inActiveGame': true,
+      });
+    }
 
     Navigator.pushNamed(
       context,
@@ -219,6 +318,14 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 final roomData = snapshot.data!.data() as Map<String, dynamic>;
                 final gameId = roomData['currentGameId'];
                 final roomOwnerUid = roomData['roomOwnerUid']; // 방장 UID 가져오기
+                final ownerTransferPending = roomData['ownerTransferPending'] ?? false;
+                final ownerCandidates = List<String>.from(roomData['ownerCandidates'] ?? []);
+                final currentUserUid = FirebaseAuth.instance.currentUser?.uid;
+
+                if (ownerTransferPending && currentUserUid != null && ownerCandidates.contains(currentUserUid) && !_isOwnerTransferModalShown) {
+                  _isOwnerTransferModalShown = true;
+                  Future.microtask(() => _showOwnerTransferModal(currentUserUid, roomData));
+                }
 
                 if (gameId != null) {
                   Future.microtask(() {

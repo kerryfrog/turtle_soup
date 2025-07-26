@@ -52,6 +52,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 				<string>kakao{207228db7587c8c798001e82733ca110}</string>
 			</array>
 		</dict>

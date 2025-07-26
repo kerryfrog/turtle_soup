@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:turtle_soup/theme/app_theme.dart';
 import 'firebase_options.dart';
 import 'screens/login_page.dart';
@@ -18,21 +19,25 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   
-  runApp(const ProviderScope(child: MyApp()));
+  final prefs = await SharedPreferences.getInstance();
+  final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+  runApp(ProviderScope(child: MyApp(isLoggedIn: isLoggedIn)));
 }
 
 class MyApp extends ConsumerWidget {
-  const MyApp({super.key});
+  final bool isLoggedIn;
+  const MyApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authStateProvider);
 
     return MaterialApp(
-      title: 'Turtle Soup',
+      title: '바다거북스프 온라인',
       theme: appTheme,
       debugShowCheckedModeBanner: false,
-      home: authState.when(
+      home: isLoggedIn ? const HomeScreenPage() : authState.when(
         data: (user) => user != null ? const HomeScreenPage() : const LoginPage(),
         loading: () => const Scaffold(
           body: Center(child: CircularProgressIndicator()),

@@ -25,6 +25,13 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
+    if (FirebaseAuth.instance.currentUser != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .set({'currentRoomId': docRef.id}, SetOptions(merge: true));
+    }
+
     if (context.mounted) {
       Navigator.pushReplacement(
         context,

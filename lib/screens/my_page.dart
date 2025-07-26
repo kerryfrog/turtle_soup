@@ -11,6 +11,58 @@ class MyPage extends StatefulWidget {
 
 class _MyPageState extends State<MyPage> {
   String? _profileUrl;
+  bool _isEditingNickname = false;
+  late TextEditingController _nicknameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nicknameController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _nicknameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _updateNickname(String uid, String currentNickname) async {
+    final newNickname = _nicknameController.text.trim();
+    if (newNickname.isEmpty || newNickname == currentNickname) {
+      setState(() {
+        _isEditingNickname = false;
+      });
+      return;
+    }
+
+    // Check if nickname already exists
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('nickname', isEqualTo: newNickname)
+        .limit(1)
+        .get();
+
+    if (querySnapshot.docs.isNotEmpty) {
+      if (querySnapshot.docs.first.id != uid) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('이미 사용 중인 닉네임입니다.')),
+          );
+        }
+        return;
+      }
+    }
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .update({'nickname': newNickname});
+    if (mounted) {
+      setState(() {
+        _isEditingNickname = false;
+      });
+    }
+  }
 
   void _selectProfile(BuildContext context, String uid) {
     final List<String> profileOptions = [
@@ -57,69 +109,6 @@ class _MyPageState extends State<MyPage> {
     );
   }
 
-  void _showNicknameChangeDialog(String currentNickname, String uid) {
-    TextEditingController nicknameController = TextEditingController(text: currentNickname);
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('닉네임 변경'),
-          content: TextField(
-            controller: nicknameController,
-            decoration: const InputDecoration(hintText: '새 닉네임을 입력하세요'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final newNickname = nicknameController.text.trim();
-                if (newNickname.isNotEmpty && newNickname != currentNickname) {
-                  // Check if nickname already exists
-                  final querySnapshot = await FirebaseFirestore.instance
-                      .collection('users')
-                      .where('nickname', isEqualTo: newNickname)
-                      .limit(1)
-                      .get();
-
-                  if (querySnapshot.docs.isNotEmpty) {
-                    // Nickname already exists, check if it's the current user's nickname
-                    if (querySnapshot.docs.first.id != uid) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('이미 사용 중인 닉네임입니다.')),
-                        );
-                        Navigator.pop(context);
-                      }
-                      return; // Stop further execution
-                    }
-                  }
-
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(uid)
-                      .update({'nickname': newNickname});
-                  if (mounted) {
-                    Navigator.pop(context);
-                    setState(() {}); // Rebuild to show updated nickname
-                  }
-                } else {
-                  if (mounted) {
-                    Navigator.pop(context);
-                  }
-                }
-              },
-              child: const Text('변경'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -152,7 +141,24 @@ class _MyPageState extends State<MyPage> {
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
           final nickname = data['nickname'] ?? '닉네임 없음';
-          _profileUrl ??= data['profileUrl'] ?? 'https://via.placeholder.com/150'; // 기본 이미지
+          _profileUrl ??=
+              data['profileUrl'] ?? 'https://via.placeholder.com/150'; // 기본 이미지
+
+          final providerId = user?.providerData.first.providerId ?? '';
+          String providerName;
+          switch (providerId) {
+            case 'google.com':
+              providerName = 'Google';
+              break;
+            case 'apple.com':
+              providerName = 'Apple';
+              break;
+            case 'password':
+              providerName = '이메일/비밀번호';
+              break;
+            default:
+              providerName = '알 수 없음';
+          }
 
           return Center(
             child: Column(
@@ -193,15 +199,57 @@ class _MyPageState extends State<MyPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Text('닉네임: $nickname', style: const TextStyle(fontSize: 20)),
                 ListTile(
-                  leading: const Icon(Icons.edit_note),
-                  title: const Text('닉네임 변경'),
-                  onTap: () {
-                    if (user?.uid != null) {
-                      _showNicknameChangeDialog(nickname, user!.uid);
-                    }
-                  },
+                  leading: const Icon(Icons.person),
+                  title: _isEditingNickname
+                      ? TextField(
+                          controller: _nicknameController,
+                          decoration: const InputDecoration(
+                            labelText: '새 닉네임',
+                            border: OutlineInputBorder(),
+                          ),
+                        )
+                      : Text('닉네임: $nickname',
+                          style: const TextStyle(fontSize: 20)),
+                  trailing: _isEditingNickname
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.check, size: 20),
+                              onPressed: () =>
+                                  _updateNickname(user!.uid, nickname),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 20),
+                              onPressed: () {
+                                setState(() {
+                                  _isEditingNickname = false;
+                                });
+                              },
+                            ),
+                          ],
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.edit, size: 20),
+                          onPressed: () {
+                            setState(() {
+                              _isEditingNickname = true;
+                              _nicknameController.text =
+                                  nickname; // Set initial value
+                            });
+                          },
+                        ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.email),
+                  title: Text('이메일: ${user?.email ?? '이메일 없음'}',
+                      style: const TextStyle(fontSize: 20)),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.login),
+                  title: Text('가입 방식: $providerName',
+                      style: const TextStyle(fontSize: 20)),
                 ),
               ],
             ),
