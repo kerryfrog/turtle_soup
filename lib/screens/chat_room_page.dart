@@ -187,6 +187,22 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   }
 
   Future<void> _startGame() async {
+    final roomRef = FirebaseFirestore.instance
+        .collection('rooms')
+        .doc(widget.roomId);
+    final roomDoc = await roomRef.get();
+    final participants = List<String>.from(roomDoc.data()?['participants'] ?? []);
+
+    if (participants.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('게임은 2명 이상부터 가능합니다.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final problemSnapshot = await FirebaseFirestore.instance
         .collection('problems')
         .get();
@@ -194,11 +210,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     problemDocs.shuffle();
     final selectedProblem = problemDocs.first.data();
 
-    final roomRef = FirebaseFirestore.instance
-        .collection('rooms')
-        .doc(widget.roomId);
-    final roomDoc = await roomRef.get();
-    final participants = List<String>.from(roomDoc.data()?['participants'] ?? []);
     participants.shuffle();
     final quizHostUid = participants.isNotEmpty ? participants.first : null;
 
@@ -294,11 +305,14 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                 final data = snapshot.data!.data() as Map<String, dynamic>;
                 final isOwner =
                     data['roomOwnerUid'] == FirebaseAuth.instance.currentUser?.uid;
+                final participants = List<String>.from(data['participants'] ?? []);
+                final canStartGame = isOwner && participants.length >= 2;
+
                 return isOwner
                     ? IconButton(
                         icon: const Icon(Icons.play_arrow),
                         tooltip: '게임 시작',
-                        onPressed: _startGame,
+                        onPressed: canStartGame ? _startGame : null,
                       )
                     : const SizedBox.shrink();
               },
