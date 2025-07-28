@@ -20,6 +20,7 @@ class _GameRoomPageState extends State<GameRoomPage> {
   Map<String, dynamic>? _replyingTo;
   final ScrollController _scrollController = ScrollController();
   String? _lastProcessedMessageId;
+  bool _initialModalShown = false;
 
   Future<bool> _onWillPop() async {
     final prefs = await SharedPreferences.getInstance();
@@ -37,8 +38,8 @@ class _GameRoomPageState extends State<GameRoomPage> {
     final shouldLeave = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('정말 나가시겠습니까?'),
-        content: const Text('게임을 종료하고 채팅방 목록으로 이동합니다.'),
+        title: const Text('게임 나가기'),
+        content: const Text('게임을 나가면 다시 참여할 수 없습니다. 정말 나가시겠습니까?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -88,7 +89,7 @@ class _GameRoomPageState extends State<GameRoomPage> {
     final quizHostUid = gameDoc.data()?['quizHostUid'];
 
     if (user.uid == quizHostUid && text == '정답') {
-      _endGame();
+      _showEndGameConfirmationDialog();
       return;
     }
 
@@ -121,6 +122,30 @@ class _GameRoomPageState extends State<GameRoomPage> {
     });
   }
 
+  Future<void> _showEndGameConfirmationDialog() async {
+    final shouldEndGame = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('정답 확인'),
+        content: const Text('참가자가 정답을 맞췄습니까? 확인을 누르면 정답이 공개되고 게임이 종료됩니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('아니오'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('예'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldEndGame == true) {
+      await _endGame();
+    }
+  }
+
   Future<void> _endGame() async {
     await FirebaseFirestore.instance
         .collection('rooms')
@@ -131,6 +156,60 @@ class _GameRoomPageState extends State<GameRoomPage> {
     // Remove crashed state when game ends
     final prefs = await SharedPreferences.getInstance();
     prefs.remove('crashed_${widget.roomId}');
+  }
+
+  void _showHostModal(BuildContext context, String problem, String answer) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('당신은 출제자입니다'),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                const Text('문제', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text(problem),
+                const SizedBox(height: 16),
+                const Text('정답', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text(answer),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('확인'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showParticipantModal(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('당신은 참가자입니다'),
+          content: const Text('출제자가 문제를 확인하는 동안 잠시만 기다려주세요.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('확인'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -179,6 +258,28 @@ class _GameRoomPageState extends State<GameRoomPage> {
 
           final currentUid = FirebaseAuth.instance.currentUser?.uid;
           final isHost = currentUid != null && hostUid == currentUid;
+
+          if (!_initialModalShown) {
+            _initialModalShown = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                if (isHost) {
+                  _showHostModal(context, problem, answer);
+                } else {
+                  _showParticipantModal(context);
+                }
+              }
+            });
+          }
+
+          if (isHost && !_initialModalShown) {
+            _initialModalShown = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _showHostModal(context, problem, answer);
+              }
+            });
+          }
 
           return Scaffold(
             appBar: AppBar(
