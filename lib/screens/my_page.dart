@@ -93,9 +93,6 @@ class _MyPageState extends State<MyPage> {
                     .update({'profileUrl': url});
                 if (mounted) {
                   Navigator.pop(context);
-                  setState(() {
-                    _profileUrl = url;
-                  });
                 }
               },
               child: CircleAvatar(
@@ -126,11 +123,11 @@ class _MyPageState extends State<MyPage> {
           ),
         ],
       ),
-      body: FutureBuilder<DocumentSnapshot>(
-        future: FirebaseFirestore.instance
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: FirebaseFirestore.instance
             .collection('users')
             .doc(user?.uid)
-            .get(),
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -141,8 +138,7 @@ class _MyPageState extends State<MyPage> {
 
           final data = snapshot.data!.data() as Map<String, dynamic>;
           final nickname = data['nickname'] ?? '닉네임 없음';
-          _profileUrl ??=
-              data['profileUrl'] ?? 'https://via.placeholder.com/150'; // 기본 이미지
+          final profileUrl = data['profileUrl'] as String?;
 
           final providerId = user?.providerData.first.providerId ?? '';
           String providerName;
@@ -169,7 +165,9 @@ class _MyPageState extends State<MyPage> {
                   children: [
                     CircleAvatar(
                       radius: 50,
-                      backgroundImage: NetworkImage(_profileUrl!),
+                      backgroundImage: (profileUrl != null && profileUrl.isNotEmpty)
+                          ? NetworkImage(profileUrl)
+                          : const AssetImage('assets/default_profile.png') as ImageProvider,
                     ),
                     Positioned(
                       bottom: 0,
@@ -243,13 +241,23 @@ class _MyPageState extends State<MyPage> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.email),
-                  title: Text('이메일: ${user?.email ?? '이메일 없음'}',
-                      style: const TextStyle(fontSize: 20)),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.login),
-                  title: Text('가입 방식: $providerName',
-                      style: const TextStyle(fontSize: 20)),
+                  title: Row(
+                    children: [
+                      Text('이메일: ${user?.email ?? '이메일 없음'}',
+                          style: const TextStyle(fontSize: 20)),
+                      if (providerId == 'google.com')
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: Image.asset('assets/login/google_small_logo.png',
+                              width: 20, height: 20),
+                        ),
+                      if (providerId == 'apple.com')
+                        const Padding(
+                          padding: EdgeInsets.only(left: 8.0),
+                          child: Icon(Icons.apple, size: 20),
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ),
