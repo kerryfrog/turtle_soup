@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:turtle_soup/theme/app_theme.dart';
 import 'register_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -34,6 +35,10 @@ class _LoginPageState extends State<LoginPage> {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', _rememberMe);
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/');
+      }
 
     } on FirebaseAuthException catch (e) {
       showDialog(
@@ -197,7 +202,7 @@ class _LoginPageState extends State<LoginPage> {
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 12),
-                      backgroundColor: Colors.blue, // 로그인 버튼 색상 변경
+                      backgroundColor: AppColors.primary, // 로그인 버튼 색상 변경
                       foregroundColor: Colors.white, // 로그인 버튼 텍스트 색상 변경
                     ),
                     child: const Text('로그인'),
@@ -227,7 +232,7 @@ class _LoginPageState extends State<LoginPage> {
               onPressed: _register,
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 50), // 너비 최대로, 높이 50
-                backgroundColor: Colors.grey, // 회원가입 버튼 색상 변경
+                backgroundColor: Colors.grey[300], // 회원가입 버튼 색상 변경
               ),
               child: const Text('이메일로 회원가입'),
             ),
