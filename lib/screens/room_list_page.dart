@@ -6,8 +6,29 @@ import 'create_room_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class RoomListPage extends StatelessWidget {
+class RoomListPage extends StatefulWidget {
   const RoomListPage({super.key});
+
+  @override
+  State<RoomListPage> createState() => _RoomListPageState();
+}
+
+class _RoomListPageState extends State<RoomListPage> {
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  void _checkLoginStatus() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      Future.microtask(() => Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginPage()),
+          ));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
