@@ -279,7 +279,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             'profileUrl': profileUrl,
             'timestamp': FieldValue.serverTimestamp(),
           });
-      _controller.clear();
     }
   }
 
@@ -301,7 +300,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   .doc(widget.roomId)
                   .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const SizedBox.shrink();
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox.shrink();
+                }
+                if (!snapshot.hasData || !snapshot.data!.exists) {
+                  // Room document does not exist or has no data, handle gracefully
+                  return const SizedBox.shrink(); // Or show an error message/navigate away
+                }
                 final data = snapshot.data!.data() as Map<String, dynamic>;
                 final isOwner =
                     data['roomOwnerUid'] == FirebaseAuth.instance.currentUser?.uid;
@@ -327,7 +332,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   .doc(widget.roomId)
                   .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) return const SizedBox.shrink();
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SizedBox.shrink();
+                }
+                if (!snapshot.hasData || !snapshot.data!.exists) {
+                  // Room document does not exist or has no data, handle gracefully
+                  return const Center(child: Text('방 정보를 불러올 수 없습니다.')); // Or navigate away
+                }
 
                 final roomData = snapshot.data!.data() as Map<String, dynamic>;
                 final gameId = roomData['currentGameId'];
@@ -432,8 +443,38 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
               ),
             ),
             MessageComposer(
-              controller: _controller,
-              onSend: _sendMessage,
+              onSend: (text) async {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) return;
+
+                final userDoc = await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(user.uid)
+                    .get();
+
+                final nickname = userDoc.data()?['nickname'] ?? '익명';
+                final profileUrl = userDoc.data()?['profileUrl'] ??
+                    'https://via.placeholder.com/150';
+
+                final roomDoc = await FirebaseFirestore.instance
+                    .collection('rooms')
+                    .doc(widget.roomId)
+                    .get();
+                final currentGameId = roomDoc.data()?['currentGameId'];
+                if (currentGameId == null) {
+                  await FirebaseFirestore.instance
+                      .collection('rooms')
+                      .doc(widget.roomId)
+                      .collection('messages')
+                      .add({
+                        'text': text,
+                        'sender': nickname,
+                        'uid': user.uid,
+                        'profileUrl': profileUrl,
+                        'timestamp': FieldValue.serverTimestamp(),
+                      });
+                }
+              },
             )
           ],
         ),

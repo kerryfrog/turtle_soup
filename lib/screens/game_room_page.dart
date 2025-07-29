@@ -120,8 +120,7 @@ class _GameRoomPageState extends State<GameRoomPage> {
     return false;
   }
 
-  void _sendMessage() async {
-    final text = _controller.text.trim();
+  void _sendMessage(String text) async {
     if (text.isEmpty) return;
 
     final user = FirebaseAuth.instance.currentUser;
@@ -163,18 +162,14 @@ class _GameRoomPageState extends State<GameRoomPage> {
           'timestamp': FieldValue.serverTimestamp(),
           if (_replyingTo != null) 'replyTo': _replyingTo,
         });
-    _controller.clear();
-    setState(() {
-      _replyingTo = null;
-    });
   }
 
   Future<void> _showEndGameConfirmationDialog() async {
-    final shouldEndGame = await showDialog<bool>(
+    final shouldProceed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('정답 확인'),
-        content: const Text('참가자가 정답을 맞췄습니까? 확인을 누르면 정답이 공개되고 게임이 종료됩니다.'),
+        content: const Text('참가자가 정답을 맞췄습니까? 확인을 누르면 정답을 맞춘 사람을 선택할 수 있습니다.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -188,20 +183,75 @@ class _GameRoomPageState extends State<GameRoomPage> {
       ),
     );
 
-    if (shouldEndGame == true) {
-      await _endGame();
+    if (shouldProceed == true) {
+      _showWinnerSelectionModal();
     }
   }
 
-  Future<void> _endGame() async {
+  Future<void> _showWinnerSelectionModal() async { // Added a comment to force re-parsing
+    final gameRef = FirebaseFirestore.instance
+        .collection('rooms')
+        .doc(widget.roomId)
+        .collection('games')
+        .doc(widget.gameId);
+    final gameDoc = await gameRef.get();
+    final participants = List<String>.from(gameDoc.data()?['participants'] ?? []);
+
+    final List<Map<String, String>> participantData = [];
+    for (final uid in participants) {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      participantData.add({'uid': uid, 'nickname': userDoc.data()?['nickname'] ?? '알 수 없음'});
+    }
+
+    final String? selectedWinnerUid = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('정답자 선택'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...participantData.map((data) => ListTile(
+                title: Text(data['nickname']!),
+                onTap: () => Navigator.pop(context, data['uid']),
+              )),
+              ListTile(
+                title: const Text('정답 없음'),
+                onTap: () => Navigator.pop(context, null),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null), // 취소 버튼
+            child: const Text('취소'),
+          ),
+        ],
+      ),
+    );
+
+    await _endGame(winnerUid: selectedWinnerUid);
+  }
+
+  Future<void> _endGame({String? winnerUid}) async {
     final roomRef = FirebaseFirestore.instance.collection('rooms').doc(widget.roomId);
     final gameRef = roomRef.collection('games').doc(widget.gameId);
 
     final gameDoc = await gameRef.get();
     final answer = gameDoc.data()?['problemAnswer'] ?? '정답 없음';
 
+    String systemMessage;
+    if (winnerUid != null) {
+      final winnerDoc = await FirebaseFirestore.instance.collection('users').doc(winnerUid).get();
+      final winnerNickname = winnerDoc.data()?['nickname'] ?? '알 수 없는 사용자';
+      systemMessage = '${winnerNickname}님이 정답을 맞췄습니다! 정답은 \'$answer\'입니다!';
+    } else {
+      systemMessage = '정답은 \'$answer\'입니다!';
+    }
+
     await gameRef.collection('messages').add({
-      'text': '정답은 \'$answer\'입니다!',
+      'text': systemMessage,
       'sender': 'System',
       'uid': 'system',
       'timestamp': FieldValue.serverTimestamp(),
@@ -584,7 +634,6 @@ class _GameRoomPageState extends State<GameRoomPage> {
                           ),
                         ),
                       MessageComposer(
-                        controller: _controller,
                         onSend: _sendMessage,
                       ),
                     ],

@@ -1,14 +1,32 @@
 import 'package:flutter/material.dart';
 
-class MessageComposer extends StatelessWidget {
-  final TextEditingController controller;
-  final VoidCallback onSend;
+class MessageComposer extends StatefulWidget {
+  final Function(String) onSend;
 
   const MessageComposer({
     super.key,
-    required this.controller,
     required this.onSend,
   });
+
+  @override
+  State<MessageComposer> createState() => _MessageComposerState();
+}
+
+class _MessageComposerState extends State<MessageComposer> {
+  final TextEditingController _controller = TextEditingController();
+
+  void _sendMessage() {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    widget.onSend(text);
+    _controller.clear();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,14 +36,14 @@ class MessageComposer extends StatelessWidget {
         children: [
           Expanded(
             child: TextField(
-              controller: controller,
+              controller: _controller,
               decoration: const InputDecoration(hintText: '메시지 입력'),
-              onSubmitted: (_) => onSend(),
+              onSubmitted: (_) => _sendMessage(),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.send),
-            onPressed: onSend,
+            onPressed: _sendMessage,
           ),
         ],
       ),

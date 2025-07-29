@@ -1,16 +1,38 @@
-# turtle_soup
+# 바다거북스프 온라인  
 
-바다거북스프 온라인 
 
-## Getting Started
 
-This project is a starting point for a Flutter application.
+## 기획 
+채팅 룸 
+chat_room_page : 게임 시작전 채팅 룸 
+  역할 : 방장, 참여자 
+게임 룸
+game_room_page : 게임 시작 후 게임 룸 -> 각 게임마다 재생성
+  역할 : 출제자 , 게임 참여자 
 
-A few resources to get you started if this is your first Flutter project:
+이탈 
+플레이어 이탈 시 게임방, 채팅방 상관 없이 System message로 ... 님이 퇴장했습니다를 띄움 
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+game_room_page 이탈 
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+game_room_page를 이탈하여 1명의 인원이 남을 시 , game_room_page를 닫고 chat_room_page로 이전한다.
+game_room_page 에서 방장이 이탈하는 
+
+1. 자의적 이탈
+  1-1. 진짜로 이탈하는지 확인 모달을 띄운다 
+    1-1-1 : 출제자 이탈 
+       
+    1-1-2 : 참가자 이탈 
+       시스템 메시지를 띄운 후 계속 진행 
+    1-1-2 : 방장 이탈  
+2. 오류로 인한 이탈 
+    
+게임 종료 
+방장이 정답 이라고 외친다.
+방장에게 진짜 정답인지 확인 모달이 뜬다.
+방장이 정답 확인을 누르면 -> game_room에 있는 참가자들 리스트를 보여주며 정답을 맞춘 사람을 고른다.
+
+이후 시스템이 00 님이 정답을 맞췄습니다 라고 선포한다.
+시스템이 정답을 공개한다.
+
+시스템이 정답을 공개한 뒤 30초뒤 게임을 종료하고 다시 chat_room_page로 돌아간다.
