@@ -182,28 +182,30 @@ class _LoginPageState extends State<LoginPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _rememberMe,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          _rememberMe = value ?? false;
-                        });
-                      },
-                    ),
-                    const Text('로그인 유지'),
-                  ],
+                Expanded(
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: _rememberMe,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            _rememberMe = value ?? false;
+                          });
+                        },
+                      ),
+                      const Text('로그인 유지'),
+                    ],
+                  ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
+                Expanded(
                   child: ElevatedButton(
                     onPressed: _login,
                     style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 12),
-                      backgroundColor: AppColors.primary, // 로그인 버튼 색상 변경
-                      foregroundColor: Colors.white, // 로그인 버튼 텍스트 색상 변경
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(0.0),
+                      ),
                     ),
                     child: const Text('로그인'),
                   ),
@@ -212,19 +214,25 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 24),
             const SizedBox(height: 12), // 버튼 간 간격 추가
-            GestureDetector(
-              onTap: _loginWithGoogle,
-              child: Image.asset(
-                'assets/login/google_login_logo.png',
-                height: 50.0, // 이미지 높이 조정
+            SizedBox(
+              width: double.infinity,
+              child: GestureDetector(
+                onTap: _loginWithGoogle,
+                child: Image.asset(
+                  'assets/login/google_login_logo.png',
+                  height: 50.0, // 이미지 높이 조정
+                ),
               ),
             ),
             const SizedBox(height: 12), // 버튼 간 간격 추가
-            GestureDetector(
-              onTap: _loginWithApple,
-              child: Image.asset(
-                'assets/login/apple_login_logo.png',
-                height: 50.0, // 이미지 높이 조정
+            SizedBox(
+              width: double.infinity,
+              child: GestureDetector(
+                onTap: _loginWithApple,
+                child: Image.asset(
+                  'assets/login/apple_login_logo.png',
+                  height: 50.0, // 이미지 높이 조정
+                ),
               ),
             ),
             const SizedBox(height: 12), // 버튼 간 간격 추가

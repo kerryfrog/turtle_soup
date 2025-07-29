@@ -34,7 +34,7 @@ class MyApp extends ConsumerWidget {
     final authState = ref.watch(authStateProvider);
 
     return MaterialApp(
-      title: '바다거북스프 온라인',
+      title: '바거슾 온라인',
       theme: appTheme,
       debugShowCheckedModeBanner: false,
       home: isLoggedIn ? const HomeScreenPage() : authState.when(

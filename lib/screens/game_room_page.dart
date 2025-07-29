@@ -17,6 +17,11 @@ class GameRoomPage extends StatefulWidget {
 }
 
 class _GameRoomPageState extends State<GameRoomPage> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
   final TextEditingController _controller = TextEditingController();
   Map<String, dynamic>? _replyingTo;
   final ScrollController _scrollController = ScrollController();
@@ -27,17 +32,6 @@ class _GameRoomPageState extends State<GameRoomPage> {
   Future<bool> _onWillPop() async {
     print('[_onWillPop] function called.');
     final prefs = await SharedPreferences.getInstance();
-    final wasCrashed = prefs.getBool('crashed_${widget.roomId}') ?? false;
-
-    if (wasCrashed) {
-      print('[_onWillPop] wasCrashed is true. Navigating to RoomListPage.');
-      prefs.remove('crashed_${widget.roomId}');
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const RoomListPage()),
-      );
-      return false;
-    }
 
     print('[_onWillPop] Showing exit confirmation dialog.');
     final shouldLeave = await showDialog<bool>(
@@ -66,8 +60,8 @@ class _GameRoomPageState extends State<GameRoomPage> {
 
     if (shouldLeave == true) {
       print('[_onWillPop] shouldLeave is true. Performing exit actions.');
-      final prefs = await SharedPreferences.getInstance();
-      prefs.remove('crashed_${widget.roomId}');
+      await prefs.remove('crashed_${widget.roomId}');
+      await prefs.remove('crashed_gameId');
 
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
@@ -76,45 +70,59 @@ class _GameRoomPageState extends State<GameRoomPage> {
             .doc(widget.roomId)
             .collection('games')
             .doc(widget.gameId);
-        final gameDoc = await gameRef.get();
-        final quizHostUid = gameDoc.data()?['quizHostUid'];
-        final participants = List<String>.from(gameDoc.data()?['participants'] ?? []);
 
-        if (user.uid == quizHostUid && participants.isNotEmpty) {
-          final remainingParticipants = participants.where((uid) => uid != user.uid).toList();
-          if (remainingParticipants.isNotEmpty) {
-            await gameRef.update({
-              'quizHostTransferPending': true,
-              'previousQuizHostUid': user.uid,
-              'quizHostCandidates': remainingParticipants,
-            });
-            final previousHostNickname = (await FirebaseFirestore.instance.collection('users').doc(user.uid).get()).data()?['nickname'] ?? '이전 출제자';
-            await gameRef.collection('messages').add({
-              'text': '$previousHostNickname님이 게임을 나갔습니다. 새로운 출제자를 선택해주세요.',
-              'sender': 'System',
-              'uid': 'system',
-              'timestamp': FieldValue.serverTimestamp(),
-            });
-          } else {
-            // No participants left, end game
-            await _endGame();
-          }
-        } else if (user.uid == quizHostUid && participants.isEmpty) {
-          // Host leaves and no participants, end game
-          await _endGame();
-        }
+        await gameRef.update({
+          'participants': FieldValue.arrayRemove([user.uid])
+        });
 
         await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
             .update({'currentRoomId': FieldValue.delete(), 'inActiveGame': false});
+
+        final gameDoc = await gameRef.get();
+        if (!gameDoc.exists) {
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const RoomListPage()),
+            );
+          }
+          return false;
+        }
+
+        final data = gameDoc.data()!;
+        final participants = List<String>.from(data['participants'] ?? []);
+        final quizHostUid = data['quizHostUid'];
+
+        if (participants.length <= 1) {
+          await _endGame();
+          return false;
+        }
+
+        if (user.uid == quizHostUid) {
+          await gameRef.update({
+            'quizHostTransferPending': true,
+            'previousQuizHostUid': user.uid,
+            'quizHostCandidates': participants,
+          });
+          final previousHostNickname = (await FirebaseFirestore.instance.collection('users').doc(user.uid).get()).data()?['nickname'] ?? '이전 출제자';
+          await gameRef.collection('messages').add({
+            'text': '$previousHostNickname님이 게임을 나갔습니다. 새로운 출제자를 선택해주세요.',
+            'sender': 'System',
+            'uid': 'system',
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+        }
       }
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const RoomListPage()),
-      );
-      return false;
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const RoomListPage()),
+        );
+      }
+      return true;
     }
     print('[_onWillPop] shouldLeave is false or dialog dismissed. Preventing pop.');
     return false;
@@ -235,6 +243,10 @@ class _GameRoomPageState extends State<GameRoomPage> {
   }
 
   Future<void> _endGame({String? winnerUid}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('crashed_${widget.roomId}');
+    await prefs.remove('crashed_gameId');
+
     final roomRef = FirebaseFirestore.instance.collection('rooms').doc(widget.roomId);
     final gameRef = roomRef.collection('games').doc(widget.gameId);
 
@@ -420,8 +432,17 @@ class _GameRoomPageState extends State<GameRoomPage> {
   @override
   Widget build(BuildContext context) {
     
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        final shouldLeave = await _onWillPop();
+        if (shouldLeave) {
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      },
       child: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
             .collection('rooms')

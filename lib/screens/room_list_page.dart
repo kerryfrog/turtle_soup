@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'chat_room_page.dart';
 import 'login_page.dart';
 import 'create_room_page.dart';
+import 'game_room_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -42,10 +43,10 @@ class _RoomListPageState extends State<RoomListPage> {
         }
 
         final prefs = prefsSnapshot.data!;
-        final pendingRoomId = prefs.getString('pendingRoomId');
-        print('✅ SharedPreferences pendingRoomId: $pendingRoomId'); // 확인용 로그
+        final crashedRoomId = prefs.getString('crashed_${prefs.getString("pendingRoomId")}');
+        final crashedGameId = prefs.getString('crashed_gameId');
 
-        if (pendingRoomId != null) {
+        if (crashedRoomId != null && crashedGameId != null) {
           // 재입장 유도 다이얼로그 표시
           Future.microtask(() {
             showDialog(
@@ -56,19 +57,21 @@ class _RoomListPageState extends State<RoomListPage> {
                 actions: [
                   TextButton(
                     onPressed: () {
-                      prefs.remove('pendingRoomId');
+                      prefs.remove('crashed_$crashedRoomId');
+                      prefs.remove('crashed_gameId');
                       Navigator.of(context).pop();
                     },
                     child: const Text('아니요'),
                   ),
                   TextButton(
                     onPressed: () {
-                      prefs.remove('pendingRoomId');
+                      prefs.remove('crashed_$crashedRoomId');
+                      prefs.remove('crashed_gameId');
                       Navigator.of(context).pop();
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => ChatRoomPage(roomId: pendingRoomId),
+                          builder: (_) => GameRoomPage(roomId: crashedRoomId, gameId: crashedGameId),
                         ),
                       );
                     },

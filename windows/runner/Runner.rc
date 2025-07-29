@@ -95,7 +95,7 @@ BEGIN
             VALUE "InternalName", "turtle_soup" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
             VALUE "OriginalFilename", "turtle_soup.exe" "\0"
-            VALUE "ProductName", "turtle_soup" "\0"
+            VALUE "ProductName", "바거슾 온라인" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

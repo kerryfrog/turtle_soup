@@ -38,8 +38,8 @@ class _HomeScreenPageState extends State<HomeScreenPage> {
 
     print('[_checkAndPromptForRejoin] currentRoomId: $currentRoomId, inActiveGame: $inActiveGame');
 
-    if (currentRoomId != null && inActiveGame) {
-      print('[_checkAndPromptForRejoin] Condition: currentRoomId is not null AND inActiveGame is true.');
+    if (currentRoomId != null) {
+      print('[_checkAndPromptForRejoin] Condition: currentRoomId is not null.');
       final roomDoc = await FirebaseFirestore.instance.collection('rooms').doc(currentRoomId).get();
       print('[_checkAndPromptForRejoin] Room exists: ${roomDoc.exists}');
       if (roomDoc.exists) {
@@ -50,28 +50,26 @@ class _HomeScreenPageState extends State<HomeScreenPage> {
             barrierDismissible: false, // Prevent dismissing by tapping outside
             builder: (context) => AlertDialog(
               title: const Text('재접속'),
-              content: const Text('이전에 참여했던 게임방이 있습니다. 다시 참여하시겠습니까?'),
+              content: Text('이전에 참여했던 ${inActiveGame ? '게임방' : '채팅방'}이 있습니다. 다시 참여하시겠습니까?'),
               actions: [
                 TextButton(
                   onPressed: () async {
                     print('[_checkAndPromptForRejoin] User chose NO. Clearing currentRoomId and inActiveGame.');
                     await FirebaseFirestore.instance.collection('users').doc(user.uid).update({'currentRoomId': FieldValue.delete(), 'inActiveGame': false});
-                    if (mounted) Navigator.of(context).pop();
+                    Navigator.of(context).pop();
                   },
                   child: const Text('아니요'),
                 ),
                 TextButton(
                   onPressed: () {
                     print('[_checkAndPromptForRejoin] User chose YES. Navigating to ChatRoomPage.');
-                    if (mounted) {
-                      Navigator.of(context).pop();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChatRoomPage(roomId: currentRoomId),
-                        ),
-                      );
-                    }
+                    Navigator.of(context).pop();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatRoomPage(roomId: currentRoomId),
+                      ),
+                    );
                   },
                   child: const Text('네'),
                 ),
@@ -84,10 +82,6 @@ class _HomeScreenPageState extends State<HomeScreenPage> {
         // Room no longer exists, clear currentRoomId and inActiveGame
         await FirebaseFirestore.instance.collection('users').doc(user.uid).update({'currentRoomId': FieldValue.delete(), 'inActiveGame': false});
       }
-    } else if (currentRoomId != null && !inActiveGame) {
-      print('[_checkAndPromptForRejoin] Condition: currentRoomId is not null AND inActiveGame is false. Clearing currentRoomId.');
-      // User was in a chat room but not in an active game, clear currentRoomId
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).update({'currentRoomId': FieldValue.delete()});
     } else {
       print('[_checkAndPromptForRejoin] Condition: currentRoomId is null. No action needed.');
     }

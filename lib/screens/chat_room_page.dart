@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:turtle_soup/widgets/message_bubble.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatRoomPage extends StatefulWidget {
   final String roomId;
@@ -29,6 +30,15 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           .doc(widget.roomId)
           .update({
             'participants': FieldValue.arrayUnion([uid]),
+          }).then((_) async {
+            final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+            final nickname = userDoc.data()?['nickname'] ?? '알 수 없는 사용자';
+            FirebaseFirestore.instance.collection('rooms').doc(widget.roomId).collection('messages').add({
+              'text': '$nickname님이 입장하셨습니다.',
+              'sender': 'System',
+              'uid': 'system',
+              'timestamp': FieldValue.serverTimestamp(),
+            });
           });
     }
   }
@@ -153,32 +163,26 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
           // If the leaving user was the owner and there are still participants, initiate ownership transfer
           if (uid == roomOwnerUid && updatedParticipants.isNotEmpty) {
+            final newOwnerUid = (updatedParticipants..shuffle()).first;
             await FirebaseFirestore.instance
                 .collection('rooms')
                 .doc(widget.roomId)
                 .update({
-                  'ownerTransferPending': true,
-                  'previousOwnerUid': uid,
-                  'ownerCandidates': updatedParticipants, // Store who can be the new owner
+                  'roomOwnerUid': newOwnerUid,
                 });
+            final newOwnerNickname = (await FirebaseFirestore.instance.collection('users').doc(newOwnerUid).get()).data()?['nickname'] ?? '새로운 방장';
             // Add a system message to the chat
             await FirebaseFirestore.instance
                 .collection('rooms')
                 .doc(widget.roomId)
                 .collection('messages')
                 .add({
-                  'text': '방장이 나갔습니다. 새로운 방장을 선택해주세요.',
+                  'text': '방장이 나가서 $newOwnerNickname님이 새로운 방장이 되었습니다.',
                   'sender': 'System',
                   'uid': 'system',
                   'timestamp': FieldValue.serverTimestamp(),
                 });
             print('Owner transfer initiated for room ${widget.roomId}');
-          }
-
-          // If no participants left, delete the room
-          if (updatedParticipants.isEmpty) {
-            await roomDocSnapshot.reference.delete();
-            print('Room ${widget.roomId} deleted as all participants left.');
           }
         }
       });
@@ -235,6 +239,10 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         'inActiveGame': true,
       });
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('crashed_${widget.roomId}', true);
+    await prefs.setString('crashed_gameId', newGameId);
 
     Navigator.pushNamed(
       context,

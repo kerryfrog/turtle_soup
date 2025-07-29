@@ -1,6 +1,6 @@
 {
-    "name": "turtle_soup",
-    "short_name": "turtle_soup",
+    "name": "바거슾 온라인",
+"short_name": "바거슾 온라인",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
