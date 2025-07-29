@@ -374,7 +374,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                             final nickname = userData?['nickname'] ?? '알 수 없음';
                             final isOwner = uid == roomData['roomOwnerUid'];
                             return Chip(
-                              label: Text(nickname, style: const TextStyle(color: Colors.white)),
+                              label: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (isOwner)
+                                    const Padding(
+                                      padding: EdgeInsets.only(right: 4.0),
+                                      child: Text('👑', style: TextStyle(fontSize: 16)),
+                                    ),
+                                  Text(nickname, style: const TextStyle(color: Colors.white)),
+                                ],
+                              ),
                               backgroundColor: isOwner ? Colors.orange : Colors.lightBlueAccent,
                               side: BorderSide.none,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),

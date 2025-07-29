@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:turtle_soup/screens/chat_room_page.dart';
 import 'package:turtle_soup/screens/room_list_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:turtle_soup/widgets/message_composer.dart';
 
 class GameRoomPage extends StatefulWidget {
   final String roomId;
@@ -21,12 +22,15 @@ class _GameRoomPageState extends State<GameRoomPage> {
   final ScrollController _scrollController = ScrollController();
   String? _lastProcessedMessageId;
   bool _initialModalShown = false;
+  bool _isQuizHostTransferModalShown = false;
 
   Future<bool> _onWillPop() async {
+    print('[_onWillPop] function called.');
     final prefs = await SharedPreferences.getInstance();
     final wasCrashed = prefs.getBool('crashed_${widget.roomId}') ?? false;
 
     if (wasCrashed) {
+      print('[_onWillPop] wasCrashed is true. Navigating to RoomListPage.');
       prefs.remove('crashed_${widget.roomId}');
       Navigator.pushReplacement(
         context,
@@ -35,6 +39,7 @@ class _GameRoomPageState extends State<GameRoomPage> {
       return false;
     }
 
+    print('[_onWillPop] Showing exit confirmation dialog.');
     final shouldLeave = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -42,22 +47,63 @@ class _GameRoomPageState extends State<GameRoomPage> {
         content: const Text('게임을 나가면 다시 참여할 수 없습니다. 정말 나가시겠습니까?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () {
+              print('[_onWillPop] Dialog: 아니오 pressed.');
+              Navigator.pop(context, false);
+            },
             child: const Text('아니오'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () {
+              print('[_onWillPop] Dialog: 예 pressed.');
+              Navigator.pop(context, true);
+            },
             child: const Text('예'),
           ),
         ],
       ),
     );
+
     if (shouldLeave == true) {
+      print('[_onWillPop] shouldLeave is true. Performing exit actions.');
       final prefs = await SharedPreferences.getInstance();
       prefs.remove('crashed_${widget.roomId}');
 
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
+        final gameRef = FirebaseFirestore.instance
+            .collection('rooms')
+            .doc(widget.roomId)
+            .collection('games')
+            .doc(widget.gameId);
+        final gameDoc = await gameRef.get();
+        final quizHostUid = gameDoc.data()?['quizHostUid'];
+        final participants = List<String>.from(gameDoc.data()?['participants'] ?? []);
+
+        if (user.uid == quizHostUid && participants.isNotEmpty) {
+          final remainingParticipants = participants.where((uid) => uid != user.uid).toList();
+          if (remainingParticipants.isNotEmpty) {
+            await gameRef.update({
+              'quizHostTransferPending': true,
+              'previousQuizHostUid': user.uid,
+              'quizHostCandidates': remainingParticipants,
+            });
+            final previousHostNickname = (await FirebaseFirestore.instance.collection('users').doc(user.uid).get()).data()?['nickname'] ?? '이전 출제자';
+            await gameRef.collection('messages').add({
+              'text': '$previousHostNickname님이 게임을 나갔습니다. 새로운 출제자를 선택해주세요.',
+              'sender': 'System',
+              'uid': 'system',
+              'timestamp': FieldValue.serverTimestamp(),
+            });
+          } else {
+            // No participants left, end game
+            await _endGame();
+          }
+        } else if (user.uid == quizHostUid && participants.isEmpty) {
+          // Host leaves and no participants, end game
+          await _endGame();
+        }
+
         await FirebaseFirestore.instance
             .collection('users')
             .doc(user.uid)
@@ -70,6 +116,7 @@ class _GameRoomPageState extends State<GameRoomPage> {
       );
       return false;
     }
+    print('[_onWillPop] shouldLeave is false or dialog dismissed. Preventing pop.');
     return false;
   }
 
@@ -147,15 +194,43 @@ class _GameRoomPageState extends State<GameRoomPage> {
   }
 
   Future<void> _endGame() async {
-    await FirebaseFirestore.instance
-        .collection('rooms')
-        .doc(widget.roomId)
-        .collection('games')
-        .doc(widget.gameId)
-        .delete();
-    // Remove crashed state when game ends
-    final prefs = await SharedPreferences.getInstance();
-    prefs.remove('crashed_${widget.roomId}');
+    final roomRef = FirebaseFirestore.instance.collection('rooms').doc(widget.roomId);
+    final gameRef = roomRef.collection('games').doc(widget.gameId);
+
+    final gameDoc = await gameRef.get();
+    final answer = gameDoc.data()?['problemAnswer'] ?? '정답 없음';
+
+    await gameRef.collection('messages').add({
+      'text': '정답은 \'$answer\'입니다!',
+      'sender': 'System',
+      'uid': 'system',
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    await Future.delayed(const Duration(seconds: 30));
+
+    await gameRef.delete();
+
+    final roomDoc = await roomRef.get();
+    final participants = List<String>.from(roomDoc.data()?['participants'] ?? []);
+    for (final participantId in participants) {
+      await FirebaseFirestore.instance.collection('users').doc(participantId).update({
+        'inActiveGame': false,
+      });
+    }
+
+    await roomRef.update({
+      'currentGameId': FieldValue.delete(),
+      'isGameActive': false,
+    });
+
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => ChatRoomPage(roomId: widget.roomId)),
+        (route) => false,
+      );
+    }
   }
 
   void _showHostModal(BuildContext context, String problem, String answer) {
@@ -212,12 +287,89 @@ class _GameRoomPageState extends State<GameRoomPage> {
     );
   }
 
+  Future<void> _showQuizHostTransferModal(BuildContext context, String previousHostNickname) async {
+    final shouldBecomeHost = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('출제자 위임 요청'),
+        content: Text('$previousHostNickname님이 게임을 나갔습니다. 새로운 출제자가 되시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('아니오'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('예'),
+          ),
+        ],
+      ),
+    );
+
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    if (shouldBecomeHost == true) {
+      await FirebaseFirestore.instance
+          .collection('rooms')
+          .doc(widget.roomId)
+          .collection('games')
+          .doc(widget.gameId)
+          .update({
+            'quizHostUid': currentUser.uid,
+            'quizHostTransferPending': false,
+            'quizHostCandidates': FieldValue.delete(),
+          });
+      // Add system message
+      final nickname = (await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).get()).data()?['nickname'] ?? '새로운 출제자';
+      await FirebaseFirestore.instance
+          .collection('rooms')
+          .doc(widget.roomId)
+          .collection('games')
+          .doc(widget.gameId)
+          .collection('messages')
+          .add({
+            'text': '$nickname님이 새로운 출제자가 되었습니다.',
+            'sender': 'System',
+            'uid': 'system',
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+    } else {
+      final gameRef = FirebaseFirestore.instance
+          .collection('rooms')
+          .doc(widget.roomId)
+          .collection('games')
+          .doc(widget.gameId);
+      final gameDoc = await gameRef.get();
+      final currentCandidates = List<String>.from(gameDoc.data()?['quizHostCandidates'] ?? []);
+      final updatedCandidates = currentCandidates..remove(currentUser.uid);
+
+      if (updatedCandidates.isEmpty) {
+        // All candidates refused, end game
+        await gameRef.update({
+          'quizHostTransferPending': false,
+          'quizHostCandidates': FieldValue.delete(),
+        });
+        await gameRef.collection('messages').add({
+          'text': '모든 참가자가 출제자 위임을 거부하여 게임이 종료됩니다.',
+          'sender': 'System',
+          'uid': 'system',
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+        await _endGame(); // End the game if no one accepts
+      } else {
+        await gameRef.update({
+          'quizHostCandidates': updatedCandidates,
+        });
+      }
+    }
+    _isQuizHostTransferModalShown = false; // Reset flag
+  }
+
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final prefs = await SharedPreferences.getInstance();
-      prefs.setBool('crashed_${widget.roomId}', true);
-    });
+    
     return WillPopScope(
       onWillPop: _onWillPop,
       child: StreamBuilder<DocumentSnapshot>(
@@ -272,11 +424,16 @@ class _GameRoomPageState extends State<GameRoomPage> {
             });
           }
 
-          if (isHost && !_initialModalShown) {
-            _initialModalShown = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
+          final quizHostTransferPending = data['quizHostTransferPending'] ?? false;
+          final quizHostCandidates = List<String>.from(data['quizHostCandidates'] ?? []);
+
+          if (quizHostTransferPending && currentUid != null && quizHostCandidates.contains(currentUid) && !_isQuizHostTransferModalShown) {
+            _isQuizHostTransferModalShown = true;
+            final previousQuizHostUid = data['previousQuizHostUid'];
+            FirebaseFirestore.instance.collection('users').doc(previousQuizHostUid).get().then((doc) {
+              final previousHostNickname = doc.data()?['nickname'] ?? '이전 출제자';
               if (mounted) {
-                _showHostModal(context, problem, answer);
+                _showQuizHostTransferModal(context, previousHostNickname);
               }
             });
           }
@@ -426,22 +583,9 @@ class _GameRoomPageState extends State<GameRoomPage> {
                             ],
                           ),
                         ),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _controller,
-                              decoration: const InputDecoration(
-                                hintText: '메시지 입력',
-                              ),
-                              onSubmitted: (_) => _sendMessage(),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.send),
-                            onPressed: _sendMessage,
-                          ),
-                        ],
+                      MessageComposer(
+                        controller: _controller,
+                        onSend: _sendMessage,
                       ),
                     ],
                   ),
