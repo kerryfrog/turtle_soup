@@ -109,9 +109,16 @@ class _RoomListPageState extends State<RoomListPage> {
                       itemCount: rooms.length,
                       itemBuilder: (context, index) {
                         final room = rooms[index];
+                        final roomData = room.data() as Map<String, dynamic>;
+                        final participants = List<String>.from(roomData['participants'] ?? []);
+                        final maxParticipants = roomData.containsKey('maxParticipants') ? roomData['maxParticipants'] : 10;
+                        final isFull = participants.length >= maxParticipants;
+
                         return ListTile(
                           title: Text(room['name']),
-                          onTap: () async {
+                          subtitle: Text('${participants.length} / $maxParticipants'),
+                          enabled: !isFull,
+                          onTap: isFull ? null : () async {
                             final currentUser = FirebaseAuth.instance.currentUser;
                             if (currentUser != null) {
                               await FirebaseFirestore.instance

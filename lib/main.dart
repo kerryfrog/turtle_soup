@@ -9,6 +9,9 @@ import 'screens/login_page.dart';
 import 'screens/game_room_page.dart';
 import 'screens/home_screen_page.dart'; // Import HomeScreenPage
 import 'screens/settings_page.dart'; // Import SettingsPage
+import 'screens/report_problem_page.dart';
+import 'screens/admin_page.dart';
+
 
 // Provider for authentication state changes
 final authStateProvider = StreamProvider<User?>((ref) {
@@ -57,6 +60,8 @@ class MyApp extends ConsumerWidget {
           );
         },
         '/settings': (context) => const SettingsPage(),
+        '/report_problem': (context) => const ReportProblemPage(),
+        '/admin': (context) => const AdminPage(),
       },
     );
   }

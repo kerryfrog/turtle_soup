@@ -28,6 +28,7 @@ class _GameRoomPageState extends State<GameRoomPage> {
   String? _lastProcessedMessageId;
   bool _initialModalShown = false;
   bool _isQuizHostTransferModalShown = false;
+  bool _isPopping = false;
 
   Future<bool> _onWillPop() async {
     print('[_onWillPop] function called.');
@@ -108,7 +109,7 @@ class _GameRoomPageState extends State<GameRoomPage> {
           });
           final previousHostNickname = (await FirebaseFirestore.instance.collection('users').doc(user.uid).get()).data()?['nickname'] ?? '이전 출제자';
           await gameRef.collection('messages').add({
-            'text': '$previousHostNickname님이 게임을 나갔습니다. 새로운 출제자를 선택해주세요.',
+            'text': '$previousHostNickname님이 게임을 나갔습니다. 새로운 출제자를 선출합니다.',
             'sender': 'System',
             'uid': 'system',
             'timestamp': FieldValue.serverTimestamp(),
@@ -197,16 +198,21 @@ class _GameRoomPageState extends State<GameRoomPage> {
   }
 
   Future<void> _showWinnerSelectionModal() async { // Added a comment to force re-parsing
+    final roomRef = FirebaseFirestore.instance.collection('rooms').doc(widget.roomId);
+    final roomDoc = await roomRef.get();
+    final participants = List<String>.from(roomDoc.data()?['participants'] ?? []);
+
     final gameRef = FirebaseFirestore.instance
         .collection('rooms')
         .doc(widget.roomId)
         .collection('games')
         .doc(widget.gameId);
     final gameDoc = await gameRef.get();
-    final participants = List<String>.from(gameDoc.data()?['participants'] ?? []);
+    final quizHostUid = gameDoc.data()?['quizHostUid'];
 
     final List<Map<String, String>> participantData = [];
     for (final uid in participants) {
+      if (uid == quizHostUid) continue;
       final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
       participantData.add({'uid': uid, 'nickname': userDoc.data()?['nickname'] ?? '알 수 없음'});
     }
@@ -243,41 +249,34 @@ class _GameRoomPageState extends State<GameRoomPage> {
   }
 
   Future<void> _endGame({String? winnerUid}) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('crashed_${widget.roomId}');
-    await prefs.remove('crashed_gameId');
-
     final roomRef = FirebaseFirestore.instance.collection('rooms').doc(widget.roomId);
     final gameRef = roomRef.collection('games').doc(widget.gameId);
 
     final gameDoc = await gameRef.get();
+    if (!gameDoc.exists) return;
     final answer = gameDoc.data()?['problemAnswer'] ?? '정답 없음';
 
-    String systemMessage;
     if (winnerUid != null) {
       final winnerDoc = await FirebaseFirestore.instance.collection('users').doc(winnerUid).get();
       final winnerNickname = winnerDoc.data()?['nickname'] ?? '알 수 없는 사용자';
-      systemMessage = '${winnerNickname}님이 정답을 맞췄습니다! 정답은 \'$answer\'입니다!';
+      await gameRef.collection('messages').add({
+        'text': '${winnerNickname}님이 정답을 맞췄습니다! 축하드려요!',
+        'sender': 'System',
+        'uid': 'system',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      await gameRef.collection('messages').add({
+        'text': '정답 공개: $answer',
+        'sender': 'System',
+        'uid': 'system',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
     } else {
-      systemMessage = '정답은 \'$answer\'입니다!';
-    }
-
-    await gameRef.collection('messages').add({
-      'text': systemMessage,
-      'sender': 'System',
-      'uid': 'system',
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
-    await Future.delayed(const Duration(seconds: 30));
-
-    await gameRef.delete();
-
-    final roomDoc = await roomRef.get();
-    final participants = List<String>.from(roomDoc.data()?['participants'] ?? []);
-    for (final participantId in participants) {
-      await FirebaseFirestore.instance.collection('users').doc(participantId).update({
-        'inActiveGame': false,
+      await gameRef.collection('messages').add({
+        'text': '정답은 $answer입니다!',
+        'sender': 'System',
+        'uid': 'system',
+        'timestamp': FieldValue.serverTimestamp(),
       });
     }
 
@@ -286,13 +285,33 @@ class _GameRoomPageState extends State<GameRoomPage> {
       'isGameActive': false,
     });
 
-    if (mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => ChatRoomPage(roomId: widget.roomId)),
-        (route) => false,
-      );
+    final roomDoc = await roomRef.get();
+    if (roomDoc.exists) {
+      final participants = List<String>.from(roomDoc.data()?['participants'] ?? []);
+      for (final participantId in participants) {
+        await FirebaseFirestore.instance.collection('users').doc(participantId).update({
+          'inActiveGame': false,
+        });
+      }
     }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('crashed_${widget.roomId}');
+    await prefs.remove('crashed_gameId');
+
+    Future.delayed(const Duration(seconds: 20), () {
+      gameRef.collection('messages').add({
+        'text': '10초뒤 대기실로 돌아갑니다',
+        'sender': 'System',
+        'uid': 'system',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    });
+
+    Future.delayed(const Duration(seconds: 30), () {
+      print('[GameRoomPage] _endGame: Deleting game document.');
+      gameRef.delete();
+    });
   }
 
   void _showHostModal(BuildContext context, String problem, String answer) {
@@ -461,12 +480,12 @@ class _GameRoomPageState extends State<GameRoomPage> {
 
           // If the document doesn't exist (e.g., game ended and deleted), navigate back.
           if (!snapshot.hasData || !snapshot.data!.exists) {
-            WidgetsBinding.instance.addPostFrameCallback((_) async {
-              if (mounted) {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => ChatRoomPage(roomId: widget.roomId)),
-                );
+            print('[GameRoomPage] StreamBuilder: Game document does not exist. Popping to previous route.');
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && !_isPopping) {
+                _isPopping = true; // Set the flag to true
+                Navigator.of(context).pop();
+                print('[GameRoomPage] StreamBuilder: Navigator.pop() called.');
               }
             });
             return const Scaffold(body: Center(child: Text("Game over. Returning to chat...")));
@@ -575,8 +594,9 @@ class _GameRoomPageState extends State<GameRoomPage> {
                         .orderBy('timestamp')
                         .snapshots(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData)
+                      if (!snapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
+                      }
                       final messages = snapshot.data!.docs;
 
                       WidgetsBinding.instance.addPostFrameCallback((_) {

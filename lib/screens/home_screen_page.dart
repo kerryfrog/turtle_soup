@@ -43,7 +43,7 @@ class _HomeScreenPageState extends State<HomeScreenPage> {
       final roomDoc = await FirebaseFirestore.instance.collection('rooms').doc(currentRoomId).get();
       // print('[_checkAndPromptForRejoin] Room exists: ${roomDoc.exists}');
       if (roomDoc.exists) {
-        if (mounted) {
+        if (inActiveGame && mounted) {
           // print('[_checkAndPromptForRejoin] Showing rejoin dialog.');
           showDialog(
             context: context,

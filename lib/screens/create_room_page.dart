@@ -23,6 +23,7 @@ class _CreateRoomPageState extends State<CreateRoomPage> {
       'isPublic': true,
       'roomOwnerUid': FirebaseAuth.instance.currentUser?.uid,
       'createdAt': FieldValue.serverTimestamp(),
+      'maxParticipants': 10,
     });
 
     if (FirebaseAuth.instance.currentUser != null) {
