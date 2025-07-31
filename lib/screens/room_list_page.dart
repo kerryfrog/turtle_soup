@@ -103,7 +103,7 @@ class _RoomListPageState extends State<RoomListPage> {
                     }
                     final rooms = snapshot.data!.docs;
                     if (rooms.isEmpty) {
-                      return const Center(child: Text('현재 게임이 없습니다'));
+                      return const Center(child: Text('현재 생성된 게임 룸이 없습니다'));
                     }
                     return ListView.builder(
                       itemCount: rooms.length,

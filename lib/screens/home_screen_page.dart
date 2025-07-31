@@ -39,12 +39,12 @@ class _HomeScreenPageState extends State<HomeScreenPage> {
     print('[_checkAndPromptForRejoin] currentRoomId: $currentRoomId, inActiveGame: $inActiveGame');
 
     if (currentRoomId != null) {
-      print('[_checkAndPromptForRejoin] Condition: currentRoomId is not null.');
+      // print('[_checkAndPromptForRejoin] Condition: currentRoomId is not null.');
       final roomDoc = await FirebaseFirestore.instance.collection('rooms').doc(currentRoomId).get();
-      print('[_checkAndPromptForRejoin] Room exists: ${roomDoc.exists}');
+      // print('[_checkAndPromptForRejoin] Room exists: ${roomDoc.exists}');
       if (roomDoc.exists) {
         if (mounted) {
-          print('[_checkAndPromptForRejoin] Showing rejoin dialog.');
+          // print('[_checkAndPromptForRejoin] Showing rejoin dialog.');
           showDialog(
             context: context,
             barrierDismissible: false, // Prevent dismissing by tapping outside
