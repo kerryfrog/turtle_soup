@@ -68,6 +68,7 @@
         *   일반 채팅 메시지를 표시하고 전송합니다.
         *   방장(roomOwnerUid)은 게임 시작 버튼을 통해 `lib/screens/game_room_page.dart`로 게임을 시작할 수 있습니다.
         *   `dispose` 메서드에서 `_isGameActive` 플래그를 사용하여 일반적인 방 퇴장과 게임 종료 후 복귀를 구분하여 불필요한 로직(방장 위임 등)이 실행되지 않도록 합니다.
+        *   **방 자동 삭제**: `_performRoomExitLogic` 함수에서 사용자가 방을 나간 후, 해당 방의 `participants` 목록이 비어있게 되면 자동으로 해당 방 문서를 Firestore에서 삭제합니다.
     *   `lib/screens/game_room_page.dart`:
         *   게임이 진행되는 동안의 전용 화면입니다.
         *   현재 게임 문제(질문)를 표시합니다.
@@ -76,19 +77,28 @@
         *   출제자가 게임을 나갈 경우, 다른 참가자에게 출제자 권한을 위임하는 로직이 포함되어 있습니다.
         *   게임 종료 시, 일정 시간 후 게임 관련 Firestore 문서를 정리하고 `ChatRoomPage`로 복귀합니다.
 
+#### 3.1. 게임 종료 후 방장 복귀 문제 해결 (v1.4)
+
+-   **문제 상황**: 게임이 종료된 후, 방장이 `GameRoomPage`에서 `ChatRoomPage`로 돌아와야 하지만, 간헐적으로 `RoomListPage`로 이동되는 문제 발생.
+-   **근본 원인**: `GameRoomPage`의 `StreamBuilder`가 게임 문서 삭제를 감지한 후 `Navigator.of(context).pop()`을 호출하여 `ChatRoomPage`로 돌아오도록 되어 있었으나, 이 `pop()` 호출이 위젯의 리빌드 과정에서 여러 번 중복으로 스케줄링되어 `ChatRoomPage`를 지나 `RoomListPage`까지 내비게이션 스택이 `pop`되는 현상 발생.
+-   **해결 방안**: `GameRoomPage`에 `_isPopping` 플래그를 도입하여 `Navigator.of(context).pop()`이 한 번만 실행되도록 제어.
+    1.  **`_GameRoomPageState`에 플래그 추가**: `bool _isPopping = false;` 플래그를 추가.
+    2.  **`StreamBuilder` 내비게이션 로직 수정**: 게임 문서가 존재하지 않아 `pop`을 수행해야 할 때, `_isPopping`이 `false`인 경우에만 `true`로 설정하고 `Navigator.of(context).pop()`을 호출. 이렇게 함으로써 `pop` 중복 호출을 방지하고, `ChatRoomPage`로의 정확한 복귀를 보장.
+-   **`ChatRoomPage`의 관련 로직**: `ChatRoomPage`의 `_isGameActive` 및 `_isReturningFromGame` 플래그와 `PopScope`의 `onPopInvoked` 로직은 게임에서 돌아오는 상황과 명시적으로 방을 나가는 상황을 구분하기 위해 이미 구현되어 있었으며, `GameRoomPage`의 중복 `pop` 문제가 해결됨에 따라 의도한 대로 작동하게 됨.
+
 4.  **사용자 프로필 및 문제 제보**:
     *   `lib/screens/my_page.dart`:
         *   사용자의 닉네임, 이메일, 프로필 사진을 표시하고 수정할 수 있습니다.
         *   "문제 제보하기" 버튼을 통해 `lib/screens/report_problem_page.dart`로 이동합니다.
     *   `lib/screens/report_problem_page.dart`:
-        *   사용자가 새로운 게임 문제를 제보할 수 있는 폼을 제공합니다.
+        *   사용자가 새로운 게임 문제를 제보할 수 있는 폼을 제공합니다。
         *   제보된 문제는 Firestore의 `problem_reports` 컬렉션에 저장되어 관리자의 승인을 기다립니다.
 
 5.  **관리자 패널**:
     *   `lib/screens/admin_page.dart`:
         *   `/admin` URL 경로를 통해 접근할 수 있는 관리자 전용 페이지입니다.
         *   접근 시 비밀번호(`admin1234` - **주의: 실제 운영에서는 더 안전한 방법을 사용해야 합니다**)를 입력하여 인증을 거쳐야 합니다.
-        *   인증 성공 시, `problem_reports` 컬렉션에 저장된 제보된 문제 목록을 표시합니다.
+        *   인증 성공 시, `problem_reports` 컬렉션에 저장된 제보된 문제 목록을 표시합니다。
         *   관리자는 각 제보에 대해 "승인" (문제를 `problems` 컬렉션으로 이동 후 `problem_reports`에서 삭제) 또는 "거부" (`problem_reports`에서 즉시 삭제) 작업을 수행할 수 있습니다.
 
 #### 4. 주요 상태 관리 및 데이터 흐름 요약

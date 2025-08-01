@@ -147,8 +147,14 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         'participants': updatedParticipants,
       });
 
-      // If the leaving user was the owner and there are still participants, initiate ownership transfer
-      if (uid == roomOwnerUid && updatedParticipants.isNotEmpty) {
+      // If no participants left, delete the room
+      if (updatedParticipants.isEmpty) {
+        print('[ChatRoomPage] _performRoomExitLogic: No participants left, deleting room ${widget.roomId}.');
+        await FirebaseFirestore.instance
+            .collection('rooms')
+            .doc(widget.roomId)
+            .delete();
+      } else if (uid == roomOwnerUid && updatedParticipants.isNotEmpty) {
         final newOwnerUid = (updatedParticipants..shuffle()).first;
         await FirebaseFirestore.instance
             .collection('rooms')

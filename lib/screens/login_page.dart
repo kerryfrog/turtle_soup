@@ -214,24 +214,26 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 24),
             const SizedBox(height: 12), // 버튼 간 간격 추가
-            SizedBox(
-              width: double.infinity,
-              child: GestureDetector(
-                onTap: _loginWithGoogle,
+            GestureDetector(
+              onTap: _loginWithGoogle,
+              child: SizedBox(
+                width: 220,
+                height: 44,
                 child: Image.asset(
                   'assets/login/google_login_logo.png',
-                  height: 50.0, // 이미지 높이 조정
+                  fit: BoxFit.fill, // 이미지를 늘려서 채움
                 ),
               ),
             ),
             const SizedBox(height: 12), // 버튼 간 간격 추가
-            SizedBox(
-              width: double.infinity,
-              child: GestureDetector(
-                onTap: _loginWithApple,
+            GestureDetector(
+              onTap: _loginWithApple,
+              child: SizedBox(
+                width: 220,
+                height: 44,
                 child: Image.asset(
                   'assets/login/apple_login_logo.png',
-                  height: 50.0, // 이미지 높이 조정
+                  fit: BoxFit.fill, // 이미지를 늘려서 채움
                 ),
               ),
             ),
