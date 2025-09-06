@@ -197,7 +197,8 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                 ),
-                Expanded(
+                SizedBox(
+                  width: 220,
                   child: ElevatedButton(
                     onPressed: _login,
                     style: ElevatedButton.styleFrom(
@@ -238,13 +239,16 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             const SizedBox(height: 12), // 버튼 간 간격 추가
-            ElevatedButton(
-              onPressed: _register,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50), // 너비 최대로, 높이 50
-                backgroundColor: Colors.grey[300], // 회원가입 버튼 색상 변경
+            SizedBox(
+              width: 220,
+              child: ElevatedButton(
+                onPressed: _register,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50), // 너비 최대로, 높이 50
+                  backgroundColor: Colors.grey[300], // 회원가입 버튼 색상 변경
+                ),
+                child: const Text('이메일로 회원가입'),
               ),
-              child: const Text('이메일로 회원가입'),
             ),
           ],
         ),

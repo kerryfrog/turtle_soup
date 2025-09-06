@@ -73,6 +73,14 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.report_problem),
+            title: const Text('문제 제보하기'),
+            onTap: () {
+              Navigator.pushNamed(context, '/report_problem');
+            },
+          ),
+          const Divider(),
+          ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.red),
             title: const Text('회원 탈퇴', style: TextStyle(color: Colors.red)),
             onTap: _showDeleteConfirmationDialog,

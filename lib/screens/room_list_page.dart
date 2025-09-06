@@ -106,6 +106,7 @@ class _RoomListPageState extends State<RoomListPage> {
                       return const Center(child: Text('현재 생성된 게임 룸이 없습니다'));
                     }
                     return ListView.builder(
+                      padding: const EdgeInsets.all(8.0),
                       itemCount: rooms.length,
                       itemBuilder: (context, index) {
                         final room = rooms[index];
@@ -114,25 +115,66 @@ class _RoomListPageState extends State<RoomListPage> {
                         final maxParticipants = roomData.containsKey('maxParticipants') ? roomData['maxParticipants'] : 10;
                         final isFull = participants.length >= maxParticipants;
 
-                        return ListTile(
-                          title: Text(room['name']),
-                          subtitle: Text('${participants.length} / $maxParticipants'),
-                          enabled: !isFull,
-                          onTap: isFull ? null : () async {
-                            final currentUser = FirebaseAuth.instance.currentUser;
-                            if (currentUser != null) {
-                              await FirebaseFirestore.instance
-                                  .collection('users')
-                                  .doc(currentUser.uid)
-                                  .set({'currentRoomId': room.id}, SetOptions(merge: true));
-                            }
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ChatRoomPage(roomId: room.id),
+                        return Card(
+                          elevation: 4.0,
+                          margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          child: InkWell(
+                            onTap: isFull ? null : () async {
+                              final currentUser = FirebaseAuth.instance.currentUser;
+                              if (currentUser != null) {
+                                await FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(currentUser.uid)
+                                    .set({'currentRoomId': room.id}, SetOptions(merge: true));
+                              }
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ChatRoomPage(roomId: room.id),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    room['name'],
+                                    style: const TextStyle(
+                                      fontSize: 18.0,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8.0),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '참여 인원: ${participants.length} / $maxParticipants',
+                                        style: TextStyle(
+                                          fontSize: 14.0,
+                                          color: isFull ? Colors.red : Colors.grey[600],
+                                        ),
+                                      ),
+                                      isFull
+                                          ? const Text(
+                                              '가득 참',
+                                              style: TextStyle(
+                                                color: Colors.red,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            )
+                                          : const Icon(Icons.arrow_forward_ios, size: 16.0),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            );
-                          },
+                            ),
+                          ),
                         );
                       },
                     );
