@@ -484,11 +484,14 @@ class _GameRoomPageState extends State<GameRoomPage> {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted && !_isPopping) {
                 _isPopping = true; // Set the flag to true
-                Navigator.of(context).pop();
-                print('[GameRoomPage] StreamBuilder: Navigator.pop() called.');
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => ChatRoomPage(roomId: widget.roomId)),
+                  (Route<dynamic> route) => route.isFirst,
+                );
+                print('[GameRoomPage] StreamBuilder: Navigated to ChatRoomPage.');
               }
             });
-            return const Scaffold(body: Center(child: Text("Game over. Returning to chat...")));
+            return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
 
           // If we have data and the document exists, proceed to build the UI.

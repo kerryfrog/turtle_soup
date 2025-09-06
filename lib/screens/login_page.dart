@@ -4,8 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:turtle_soup/theme/app_theme.dart';
 import 'register_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+// import 'package:google_sign_in/google_sign_in.dart';
+// import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 
 class LoginPage extends StatefulWidget {
@@ -60,97 +60,97 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _loginWithGoogle() async {
-    print('Google 로그인 버튼 클릭됨');
-    try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn(clientId: '102119003728-b4fiegvc3rm092gvjfp9t5pkosp53idr.apps.googleusercontent.com').signIn();
-      if (googleUser == null) {
-        return; // 사용자가 로그인을 취소함
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
-      final user = userCredential.user;
-
-      if (user != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', _rememberMe);
-
-        // Firestore에 사용자 정보 저장 또는 업데이트
-        final userDocRef =
-            FirebaseFirestore.instance.collection('users').doc(user.uid);
-        final userDoc = await userDocRef.get();
-
-        if (!userDoc.exists) {
-          await userDocRef.set({
-            'nickname': user.displayName,
-            'profileUrl': user.photoURL,
-            'uid': user.uid,
-          });
-        }
-
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/');
-        }
-      }
-    } on FirebaseAuthException catch (e) {
-      print('Google 로그인 실패: ${e.message}');
-    } catch (e) {
-      print('Google 로그인 중 오류가 발생했습니다: $e');
-    }
+    // print('Google 로그인 버튼 클릭됨');
+    // try {
+    //   final GoogleSignInAccount? googleUser = await GoogleSignIn(clientId: '102119003728-b4fiegvc3rm092gvjfp9t5pkosp53idr.apps.googleusercontent.com').signIn();
+    //   if (googleUser == null) {
+    //     return; // 사용자가 로그인을 취소함
+    //   }
+    //
+    //   final GoogleSignInAuthentication googleAuth =
+    //       await googleUser.authentication;
+    //   final credential = GoogleAuthProvider.credential(
+    //     accessToken: googleAuth.accessToken,
+    //     idToken: googleAuth.idToken,
+    //   );
+    //
+    //   final userCredential =
+    //       await FirebaseAuth.instance.signInWithCredential(credential);
+    //   final user = userCredential.user;
+    //
+    //   if (user != null) {
+    //     final prefs = await SharedPreferences.getInstance();
+    //     await prefs.setBool('isLoggedIn', _rememberMe);
+    //
+    //     // Firestore에 사용자 정보 저장 또는 업데이트
+    //     final userDocRef =
+    //         FirebaseFirestore.instance.collection('users').doc(user.uid);
+    //     final userDoc = await userDocRef.get();
+    //
+    //     if (!userDoc.exists) {
+    //       await userDocRef.set({
+    //         'nickname': user.displayName,
+    //         'profileUrl': user.photoURL,
+    //         'uid': user.uid,
+    //       });
+    //     }
+    //
+    //     if (mounted) {
+    //       Navigator.pushReplacementNamed(context, '/');
+    //     }
+    //   }
+    // } on FirebaseAuthException catch (e) {
+    //   print('Google 로그인 실패: ${e.message}');
+    // } catch (e) {
+    //   print('Google 로그인 중 오류가 발생했습니다: $e');
+    // }
   }
 
   Future<void> _loginWithApple() async {
-    print('Apple 로그인 버튼 클릭됨');
-    try {
-      final credential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-      );
-
-      final appleCredential = OAuthProvider('apple.com').credential(
-        idToken: credential.identityToken,
-        accessToken: credential.authorizationCode,
-      );
-
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(appleCredential);
-      final user = userCredential.user;
-
-      if (user != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', _rememberMe);
-
-        // Firestore에 사용자 정보 저장 또는 업데이트
-        final userDocRef =
-            FirebaseFirestore.instance.collection('users').doc(user.uid);
-        final userDoc = await userDocRef.get();
-
-        if (!userDoc.exists) {
-          await userDocRef.set({
-            'nickname': user.displayName ?? 'Apple User',
-            'profileUrl': user.photoURL,
-            'uid': user.uid,
-          });
-        }
-
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/');
-        }
-      }
-    } on FirebaseAuthException catch (e) {
-      print('Apple 로그인 실패: ${e.message}');
-    } catch (e) {
-      print('Apple 로그인 중 오류가 발생했습니다: $e');
-    }
+    // print('Apple 로그인 버튼 클릭됨');
+    // try {
+    //   final credential = await SignInWithApple.getAppleIDCredential(
+    //     scopes: [
+    //       AppleIDAuthorizationScopes.email,
+    //       AppleIDAuthorizationScopes.fullName,
+    //     ],
+    //   );
+    //
+    //   final appleCredential = OAuthProvider('apple.com').credential(
+    //     idToken: credential.identityToken,
+    //     accessToken: credential.authorizationCode,
+    //   );
+    //
+    //   final userCredential =
+    //       await FirebaseAuth.instance.signInWithCredential(appleCredential);
+    //   final user = userCredential.user;
+    //
+    //   if (user != null) {
+    //     final prefs = await SharedPreferences.getInstance();
+    //     await prefs.setBool('isLoggedIn', _rememberMe);
+    //
+    //     // Firestore에 사용자 정보 저장 또는 업데이트
+    //     final userDocRef =
+    //         FirebaseFirestore.instance.collection('users').doc(user.uid);
+    //     final userDoc = await userDocRef.get();
+    //
+    //     if (!userDoc.exists) {
+    //       await userDocRef.set({
+    //         'nickname': user.displayName ?? 'Apple User',
+    //         'profileUrl': user.photoURL,
+    //         'uid': user.uid,
+    //       });
+    //     }
+    //
+    //     if (mounted) {
+    //       Navigator.pushReplacementNamed(context, '/');
+    //     }
+    //   }
+    // } on FirebaseAuthException catch (e) {
+    //   print('Apple 로그인 실패: ${e.message}');
+    // } catch (e) {
+    //   print('Apple 로그인 중 오류가 발생했습니다: $e');
+    // }
   }
 
   void _register() {
@@ -215,29 +215,29 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 24),
             const SizedBox(height: 12), // 버튼 간 간격 추가
-            GestureDetector(
-              onTap: _loginWithGoogle,
-              child: SizedBox(
-                width: 220,
-                height: 44,
-                child: Image.asset(
-                  'assets/login/google_login_logo.png',
-                  fit: BoxFit.fill, // 이미지를 늘려서 채움
-                ),
-              ),
-            ),
-            const SizedBox(height: 12), // 버튼 간 간격 추가
-            GestureDetector(
-              onTap: _loginWithApple,
-              child: SizedBox(
-                width: 220,
-                height: 44,
-                child: Image.asset(
-                  'assets/login/apple_login_logo.png',
-                  fit: BoxFit.fill, // 이미지를 늘려서 채움
-                ),
-              ),
-            ),
+            // GestureDetector(
+            //   onTap: _loginWithGoogle,
+            //   child: SizedBox(
+            //     width: 220,
+            //     height: 44,
+            //     child: Image.asset(
+            //       'assets/login/google_login_logo.png',
+            //       fit: BoxFit.fill, // 이미지를 늘려서 채움
+            //     ),
+            //   ),
+            // ),
+            // const SizedBox(height: 12), // 버튼 간 간격 추가
+            // GestureDetector(
+            //   onTap: _loginWithApple,
+            //   child: SizedBox(
+            //     width: 220,
+            //     height: 44,
+            //     child: Image.asset(
+            //       'assets/login/apple_login_logo.png',
+            //       fit: BoxFit.fill, // 이미지를 늘려서 채움
+            //     ),
+            //   ),
+            // ),
             const SizedBox(height: 12), // 버튼 간 간격 추가
             SizedBox(
               width: 220,
