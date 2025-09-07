@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "102119003728",
+    "project_id": "turtle-soup-e7377",
+    "storage_bucket": "turtle-soup-e7377.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:102119003728:android:1703233243579277e6a355",
+        "android_client_info": {
+          "package_name": "com.example.turtle_soup"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtolLJ6fzhoBE4CUuy2iJ_tHF9PEosCq0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

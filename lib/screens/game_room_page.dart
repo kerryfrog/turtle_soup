@@ -96,12 +96,19 @@ class _GameRoomPageState extends State<GameRoomPage> {
         final participants = List<String>.from(data['participants'] ?? []);
         final quizHostUid = data['quizHostUid'];
 
+        // Check if the current user is the quiz host
+        final isCurrentUserQuizHost = user.uid == quizHostUid;
+
         if (participants.length <= 1) {
-          await _endGame();
-          return false;
+          // If only one participant remains (or none), end the game.
+          // If the leaving user is the quiz host, do not reveal the answer.
+          await _endGame(shouldRevealAnswer: !isCurrentUserQuizHost);
+          return false; // Game ends, so prevent further pop actions
         }
 
-        if (user.uid == quizHostUid) {
+        if (isCurrentUserQuizHost) {
+          // If the leaving user is the quiz host and there are other participants,
+          // initiate host transfer.
           await gameRef.update({
             'quizHostTransferPending': true,
             'previousQuizHostUid': user.uid,
@@ -248,7 +255,7 @@ class _GameRoomPageState extends State<GameRoomPage> {
     await _endGame(winnerUid: selectedWinnerUid);
   }
 
-  Future<void> _endGame({String? winnerUid}) async {
+  Future<void> _endGame({String? winnerUid, bool shouldRevealAnswer = true}) async {
     final roomRef = FirebaseFirestore.instance.collection('rooms').doc(widget.roomId);
     final gameRef = roomRef.collection('games').doc(widget.gameId);
 
@@ -256,28 +263,30 @@ class _GameRoomPageState extends State<GameRoomPage> {
     if (!gameDoc.exists) return;
     final answer = gameDoc.data()?['problemAnswer'] ?? '정답 없음';
 
-    if (winnerUid != null) {
-      final winnerDoc = await FirebaseFirestore.instance.collection('users').doc(winnerUid).get();
-      final winnerNickname = winnerDoc.data()?['nickname'] ?? '알 수 없는 사용자';
-      await gameRef.collection('messages').add({
-        'text': '${winnerNickname}님이 정답을 맞췄습니다! 축하드려요!',
-        'sender': 'System',
-        'uid': 'system',
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-      await gameRef.collection('messages').add({
-        'text': '정답 공개: $answer',
-        'sender': 'System',
-        'uid': 'system',
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    } else {
-      await gameRef.collection('messages').add({
-        'text': '정답은 $answer입니다!',
-        'sender': 'System',
-        'uid': 'system',
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+    if (shouldRevealAnswer) {
+      if (winnerUid != null) {
+        final winnerDoc = await FirebaseFirestore.instance.collection('users').doc(winnerUid).get();
+        final winnerNickname = winnerDoc.data()?['nickname'] ?? '알 수 없는 사용자';
+        await gameRef.collection('messages').add({
+          'text': '${winnerNickname}님이 정답을 맞췄습니다! 축하드려요!',
+          'sender': 'System',
+          'uid': 'system',
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+        await gameRef.collection('messages').add({
+          'text': '정답 공개: $answer',
+          'sender': 'System',
+          'uid': 'system',
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await gameRef.collection('messages').add({
+          'text': '정답은 $answer입니다!',
+          'sender': 'System',
+          'uid': 'system',
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+      }
     }
 
     await roomRef.update({

@@ -35,3 +35,52 @@ game_room_page 에서 방장이 이탈하는 경우 chat_room_page.dart 에 복�
 시스템이 정답을 공개한다.
 
 시스템이 정답을 공개한 뒤 30초뒤 게임을 종료하고 다시 chat_room_page로 돌아간다.
+
+## 실행 명령어 (Execution Commands)
+
+### 개발 환경 (Development Environment)
+
+개발
+flutter run -t lib/main_prod.dart --flavor prod 
+
+운영
+flutter run -t lib/main_prod.dart --flavor prod
+
+기존 Firebase 설정을 개발 환경으로 사용합니다.
+
+
+
+*   **Android:**
+    ```bash
+    flutter run -t lib/main_dev.dart --flavor dev
+    ```
+*   **iOS:**
+    ```bash
+    flutter run -t lib/main_dev.dart
+    ```
+    (Xcode에서 `Debug` 스키마에 `GoogleService-Info-dev.plist`를 사용하도록 설정했거나, Xcode에서 수동으로 스키마를 선택해야 합니다.)
+
+### 프로덕션 환경 (Production Environment)
+
+새로운 Firebase 설정이 필요합니다.
+
+1.  **`prod` Firebase 구성 파일 제공:**
+    *   **Android:** 프로덕션 Firebase 프로젝트용 새 `google-services.json`을 생성하여 `android/app/src/prod/google-services.json`에 배치합니다. (필요시 `android/app/src/prod` 디렉토리를 다시 생성해야 합니다.)
+    *   **iOS:** 프로덕션 Firebase 프로젝트용 새 `GoogleService-Info.plist`를 생성하여 `ios/config/GoogleService-Info-prod.plist`에 배치합니다.
+
+2.  **Flutter용 `prod` Firebase 옵션 생성:**
+    ```bash
+    flutterfire configure --project=<your-prod-project-id> --out=lib/firebase_options_prod.dart --ios-bundle-id=<your-prod-ios-bundle-id> --android-app-id=<your-prod-android-app-id>
+    ```
+    (플레이스홀더를 실제 프로덕션 프로젝트 세부 정보로 대체하세요.)
+
+3.  **앱 실행:**
+    *   **Android:**
+        ```bash
+        flutter run -t lib/main_prod.dart --flavor prod
+        ```
+    *   **iOS:**
+        ```bash
+        flutter run -t lib/main_prod.dart
+        ```
+        (Xcode에서 `Release` 스키마에 `GoogleService-Info-prod.plist`를 사용하도록 설정했거나, Xcode에서 수동으로 스키마를 선택해야 합니다.)

@@ -55,7 +55,7 @@ class _RegisterPageState extends State<RegisterPage> {
               decoration: const InputDecoration(labelText: '비밀번호'),
             ),
             const SizedBox(height: 24),
-            ElevatedButton(onPressed: _register, child: const Text('Register')),
+            ElevatedButton(onPressed: _register, child: const Text('회원가입')),
           ],
         ),
       ),

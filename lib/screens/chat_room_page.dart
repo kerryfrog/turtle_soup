@@ -204,6 +204,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     final problemSnapshot =
         await FirebaseFirestore.instance.collection('problems').get();
     final problemDocs = problemSnapshot.docs;
+    print(problemDocs);
     problemDocs.shuffle();
     final selectedProblem = problemDocs.first.data();
 

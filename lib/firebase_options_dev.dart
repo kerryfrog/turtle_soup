@@ -41,49 +41,47 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAEdLAiSPYPCxqZEUC7GDmUu8z6k0X4QyY',
-    appId: '1:417036717367:web:3f1230f9c98396a28f5eb2',
-    messagingSenderId: '417036717367',
-    projectId: 'turtle-soup-prod',
-    authDomain: 'turtle-soup-prod.firebaseapp.com',
-    storageBucket: 'turtle-soup-prod.firebasestorage.app',
-    measurementId: 'G-DN882C784P',
+    apiKey: 'AIzaSyAZrorKBoe7OkH1gIISaj1-lMTfjNY-FRI',
+    appId: '1:102119003728:web:55d55b3231735ab7e6a355',
+    messagingSenderId: '102119003728',
+    projectId: 'turtle-soup-e7377',
+    authDomain: 'turtle-soup-e7377.firebaseapp.com',
+    storageBucket: 'turtle-soup-e7377.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyD1jtTZVxOoLzbveDEj1CSUbRWCJ9K4x3E',
-    appId: '1:417036717367:android:140c54f62f422b368f5eb2',
-    messagingSenderId: '417036717367',
-    projectId: 'turtle-soup-prod',
-    storageBucket: 'turtle-soup-prod.firebasestorage.app',
+    apiKey: 'AIzaSyBtolLJ6fzhoBE4CUuy2iJ_tHF9PEosCq0',
+    appId: '1:102119003728:android:1703233243579277e6a355',
+    messagingSenderId: '102119003728',
+    projectId: 'turtle-soup-e7377',
+    storageBucket: 'turtle-soup-e7377.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyC9KqYYXNXQ4tMthFM96KqQ1NkpH9LGzLM',
-    appId: '1:417036717367:ios:f78d3e1f40005a128f5eb2',
-    messagingSenderId: '417036717367',
-    projectId: 'turtle-soup-prod',
-    storageBucket: 'turtle-soup-prod.firebasestorage.app',
+    apiKey: 'AIzaSyAZgbEZ72fhB3HMxQdRKe9YlJ6ehzmjY2E',
+    appId: '1:102119003728:ios:8697ffcfa719e8eae6a355',
+    messagingSenderId: '102119003728',
+    projectId: 'turtle-soup-e7377',
+    storageBucket: 'turtle-soup-e7377.firebasestorage.app',
     iosBundleId: 'com.example.turtleSoup',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyC9KqYYXNXQ4tMthFM96KqQ1NkpH9LGzLM',
-    appId: '1:417036717367:ios:f78d3e1f40005a128f5eb2',
-    messagingSenderId: '417036717367',
-    projectId: 'turtle-soup-prod',
-    storageBucket: 'turtle-soup-prod.firebasestorage.app',
+    apiKey: 'AIzaSyAZgbEZ72fhB3HMxQdRKe9YlJ6ehzmjY2E',
+    appId: '1:102119003728:ios:8697ffcfa719e8eae6a355',
+    messagingSenderId: '102119003728',
+    projectId: 'turtle-soup-e7377',
+    storageBucket: 'turtle-soup-e7377.firebasestorage.app',
     iosBundleId: 'com.example.turtleSoup',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAEdLAiSPYPCxqZEUC7GDmUu8z6k0X4QyY',
-    appId: '1:417036717367:web:29a1587bbe8b0a2a8f5eb2',
-    messagingSenderId: '417036717367',
-    projectId: 'turtle-soup-prod',
-    authDomain: 'turtle-soup-prod.firebaseapp.com',
-    storageBucket: 'turtle-soup-prod.firebasestorage.app',
-    measurementId: 'G-CNRMQLSBN7',
+    apiKey: 'AIzaSyAZrorKBoe7OkH1gIISaj1-lMTfjNY-FRI',
+    appId: '1:102119003728:web:0b8a2811aad3b60fe6a355',
+    messagingSenderId: '102119003728',
+    projectId: 'turtle-soup-e7377',
+    authDomain: 'turtle-soup-e7377.firebaseapp.com',
+    storageBucket: 'turtle-soup-e7377.firebasestorage.app',
   );
 
 }

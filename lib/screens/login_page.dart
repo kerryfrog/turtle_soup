@@ -160,6 +160,66 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  void _showPasswordResetDialog(BuildContext context) {
+    final TextEditingController emailResetController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('비밀번호 재설정'),
+        content: TextField(
+          controller: emailResetController,
+          decoration: const InputDecoration(labelText: '이메일'),
+          keyboardType: TextInputType.emailAddress,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final email = emailResetController.text.trim();
+              if (email.isEmpty) {
+                // Show an error or toast
+                return;
+              }
+              try {
+                await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+                if (mounted) {
+                  Navigator.pop(context); // Close the dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('비밀번호 재설정 이메일이 전송되었습니다.'),
+                    ),
+                  );
+                }
+              } on FirebaseAuthException catch (e) {
+                if (mounted) {
+                  Navigator.pop(context); // Close the dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(e.message ?? '비밀번호 재설정 실패.'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  Navigator.pop(context); // Close the dialog
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('오류가 발생했습니다. 다시 시도해주세요.'),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('전송'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -239,16 +299,30 @@ class _LoginPageState extends State<LoginPage> {
             //   ),
             // ),
             const SizedBox(height: 12), // 버튼 간 간격 추가
-            SizedBox(
-              width: 220,
-              child: ElevatedButton(
-                onPressed: _register,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50), // 너비 최대로, 높이 50
-                  backgroundColor: Colors.grey[300], // 회원가입 버튼 색상 변경
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _register,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(0, 50), // 너비는 Expanded가 처리, 높이 50
+                      backgroundColor: Colors.grey[300], // 회원가입 버튼 색상 변경
+                    ),
+                    child: const Text('이메일로 회원가입'),
+                  ),
                 ),
-                child: const Text('이메일로 회원가입'),
-              ),
+                const SizedBox(width: 12), // 버튼 간 간격 추가
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _showPasswordResetDialog(context),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(0, 50), // 너비는 Expanded가 처리, 높이 50
+                      backgroundColor: Colors.grey[300], // 회원가입 버튼과 동일한 색상
+                    ),
+                    child: const Text('비밀번호를 잊으셨나요?'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

@@ -85,5 +85,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'turtle-soup-prod.firebasestorage.app',
     measurementId: 'G-CNRMQLSBN7',
   );
-
 }

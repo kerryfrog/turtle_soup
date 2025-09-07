@@ -40,6 +40,20 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    flavorDimensions += "env"
+    productFlavors {
+        create("dev") {
+            dimension = "env"
+            applicationId = "com.example.turtle_soup"
+            versionNameSuffix = "-dev"
+        }
+        create("prod") {
+            dimension = "env"
+            applicationId = "com.turtlesoup.prod"
+        }
+    }
+
 }
 
 flutter {

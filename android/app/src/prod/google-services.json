@@ -7,25 +7,6 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:417036717367:android:140c54f62f422b368f5eb2",
-        "android_client_info": {
-          "package_name": "com.example.turtle_soup"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyD1jtTZVxOoLzbveDEj1CSUbRWCJ9K4x3E"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:417036717367:android:07fd4b88277c50748f5eb2",
         "android_client_info": {
           "package_name": "com.turtlesoup.prod"
