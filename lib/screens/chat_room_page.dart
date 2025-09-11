@@ -76,7 +76,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         .collection('messages')
         .add({
       'text': '$nickname님이 입장하셨습니다.',
-      'sender': 'System',
+      'sender': '운영자',
       'uid': 'system',
       'timestamp': FieldValue.serverTimestamp(),
     });
@@ -135,7 +135,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           .collection('messages')
           .add({
         'text': '$userNickname님이 방을 나갔습니다.',
-        'sender': 'System',
+        'sender': '운영자',
         'uid': 'system',
         'timestamp': FieldValue.serverTimestamp(),
       });
@@ -175,7 +175,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             .collection('messages')
             .add({
           'text': '방장이 나가서 $newOwnerNickname님이 새로운 방장이 되었습니다.',
-          'sender': 'System',
+          'sender': '운영자',
           'uid': 'system',
           'timestamp': FieldValue.serverTimestamp(),
         });

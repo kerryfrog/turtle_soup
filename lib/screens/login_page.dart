@@ -18,12 +18,17 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController(text: 'a@naver.com');
   final TextEditingController _passwordController = TextEditingController(
-    text: '111111',
+    text: '123456',
   );
+  String? _errorMessage;
   bool _rememberMe = false;
 
   void _login() async {
     print('이메일/비밀번호 로그인 버튼 클릭됨');
+    setState(() {
+      _errorMessage = null;
+    });
+
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     try {
@@ -41,21 +46,18 @@ class _LoginPageState extends State<LoginPage> {
       }
 
     } on FirebaseAuthException catch (e) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('로그인 실패'),
-          content: Text(e.message ?? '알 수 없는 오류가 발생했습니다.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('확인'),
-            ),
-          ],
-        ),
-      );
+      setState(() {
+        if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+          _errorMessage = '이메일 또는 비밀번호가 잘못되었습니다. 다시 확인해주세요.';
+        } else {
+          _errorMessage = e.message ?? '알 수 없는 오류가 발생했습니다.';
+        }
+      });
     } catch (e) {
       print('로그인 실패: $e');
+      setState(() {
+        _errorMessage = '로그인 중 오류가 발생했습니다.';
+      });
     }
   }
 
@@ -239,6 +241,17 @@ class _LoginPageState extends State<LoginPage> {
               obscureText: true,
               decoration: const InputDecoration(labelText: '비밀번호'),
             ),
+            if (_errorMessage != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+              ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -308,7 +321,7 @@ class _LoginPageState extends State<LoginPage> {
                       minimumSize: const Size(0, 50), // 너비는 Expanded가 처리, 높이 50
                       backgroundColor: Colors.grey[300], // 회원가입 버튼 색상 변경
                     ),
-                    child: const Text('이메일로 회원가입'),
+                    child: const Text('회원가입'),
                   ),
                 ),
                 const SizedBox(width: 12), // 버튼 간 간격 추가
@@ -319,7 +332,7 @@ class _LoginPageState extends State<LoginPage> {
                       minimumSize: const Size(0, 50), // 너비는 Expanded가 처리, 높이 50
                       backgroundColor: Colors.grey[300], // 회원가입 버튼과 동일한 색상
                     ),
-                    child: const Text('비밀번호를 잊으셨나요?'),
+                    child: const Text('비밀번호 찾기'),
                   ),
                 ),
               ],

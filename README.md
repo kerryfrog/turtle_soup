@@ -15,7 +15,7 @@ game_room_page : 게임 시작 후 게임 룸 -> 각 게임마다 재생성
 game_room_page 이탈 
 
 game_room_page를 이탈하여 1명의 인원이 남을 시, game_room_page를 닫고 chat_room_page로 이전한다.
-game_room_page 에서 방장이 이탈하는 경우 chat_room_page.dart 에 복귀해서 랜덤으로 한명이 방장이 되도록 해
+game_room_page 에서 방장이 이탈하는 경우 chat_room_page.dart 에 있는 사람중 한명이 랜덤으로 방장이 되도록 해
 
 1. 자의적 이탈
   1-1. 진짜로 이탈하는지 확인 모달을 띄운다 
@@ -41,10 +41,15 @@ game_room_page 에서 방장이 이탈하는 경우 chat_room_page.dart 에 복�
 ### 개발 환경 (Development Environment)
 
 개발
-flutter run -t lib/main_prod.dart --flavor prod 
+flutter run -t lib/main_prod.dart --flavor dev
+
+flutter run -t lib/main_prod.dart --flavor dev -d chrome 
 
 운영
 flutter run -t lib/main_prod.dart --flavor prod
+
+빌드 
+flutter build ios --release --flavor Runner -t lib/main_prod.dart
 
 기존 Firebase 설정을 개발 환경으로 사용합니다.
 
